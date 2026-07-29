@@ -42,16 +42,16 @@ export default function Home() {
     <main>
       <nav className="nav shell" aria-label="Primary navigation">
         <Link className="wordmark" href="/">sundays<span>.</span><small>offhours</small></Link>
-        <div className="nav-links"><a href="#work">Explore</a><a href="#about">About</a></div>
+        <div className="nav-links"><span>04 selected works</span></div>
         <a className="github-button" href="https://github.com" target="_blank" rel="noreferrer"><span className="github-dot" aria-hidden="true" /> Continue with GitHub</a>
       </nav>
       <section className="hero shell">
         <div className="eyebrow"><span>001</span> Offhours index</div>
-        <h1>Made after work.<br /><em>Shared with the world.</em></h1>
-        <div className="hero-bottom"><p>A gallery for the little apps that became<br />something worth showing.</p><a className="text-link" href="#work">See what&apos;s being made <Arrow /></a></div>
+        <h1>Made after work. <em>Shared with the world.</em></h1>
+        <div className="hero-bottom"><p>A gallery for the little apps that became something worth showing.</p><span className="gallery-note">Independent · GitHub-native · Selected weekly</span></div>
       </section>
       <section className="projects shell" id="work">
-        <div className="section-head"><div><span className="section-number">01 / 03</span><h2>Fresh from the<br />side-project folder.</h2></div><p>Small software, big personality.<br />Selected weekly.</p></div>
+        <div className="section-head"><div><span className="section-number">GALLERY / 001—004</span><h2>Selected work</h2></div><p>Small software, big personality.</p></div>
         <div className="project-grid">
           {projects.map((project) => (
             <article className="project-card" key={project.title}>
@@ -63,18 +63,7 @@ export default function Home() {
           ))}
         </div>
       </section>
-      <section className="makers shell" id="about">
-        <span className="section-number">02 / 03</span>
-        <div className="makers-copy"><h2>No pitches.<br />No growth hacks.<br /><em>Just good work.</em></h2><p>sundays is for people who make things in their offhours because they can&apos;t quite stop themselves. Your page, your projects, your GitHub. We host the gallery—not your work.</p><a className="light-button" href="https://github.com" target="_blank" rel="noreferrer">Add yours with GitHub <Arrow /></a></div>
-        <div className="maker-stack" aria-label="Featured makers">
-          {projects.slice(0, 3).map((project, index) => <Link className="maker-row" href={`/maker/${project.handle}`} key={project.handle}><span className={`avatar avatar-${index + 1}`} aria-hidden="true">{project.maker.charAt(0)}</span><span><strong>{project.maker}</strong><small>@{project.handle}</small></span><b>{String(index + 1).padStart(2, "0")} projects</b><Arrow /></Link>)}
-        </div>
-      </section>
-      <section className="submit shell">
-        <span className="section-number">03 / 03</span><div className="submit-mark">↘</div><h2>That thing you made<br />last weekend?</h2>
-        <div><p>It belongs here.</p><a className="dark-button" href="https://github.com" target="_blank" rel="noreferrer"><span className="github-dot light" aria-hidden="true" /> Submit from GitHub <Arrow /></a></div>
-      </section>
-      <footer className="footer shell"><Link className="wordmark" href="/">sundays<span>.</span><small>offhours</small></Link><p>For people who make things<br />after they&apos;re done making things.</p><div><a href="#work">Explore</a><a href="https://github.com">GitHub</a><a href="mailto:hello@sundays.gallery">Say hello</a></div><small>© 2026 sundays</small></footer>
+      <footer className="footer shell"><Link className="wordmark" href="/">sundays<span>.</span><small>offhours</small></Link><p>For people who make things after they&apos;re done making things.</p><a className="footer-submit" href="https://github.com" target="_blank" rel="noreferrer">Submit from GitHub <Arrow /></a><small>© 2026</small></footer>
     </main>
   );
 }
