@@ -20,7 +20,7 @@ export default async function MakerPage({ params }: { params: Promise<{ handle: 
   return (
     <main className="profile" style={{ "--profile-accent": maker.accent } as React.CSSProperties}>
       <nav className="nav shell">
-        <Link className="wordmark" href="/">sundays<span>.</span><small>for offhours</small></Link>
+        <Link className="wordmark" href="/">sundays<span>.</span><small>offhours</small></Link>
         <Link className="back-link" href="/">← Back to gallery</Link>
         <a className="github-button" href="https://github.com" target="_blank" rel="noreferrer"><span className="github-dot" /> GitHub profile</a>
       </nav>
@@ -40,7 +40,7 @@ export default async function MakerPage({ params }: { params: Promise<{ handle: 
           ))}
         </div>
       </section>
-      <footer className="profile-footer shell"><Link href="/">← Explore more makers</Link><small>© 2026 sundays · for offhours</small></footer>
+      <footer className="profile-footer shell"><Link href="/">← Explore more makers</Link><small>© 2026 sundays · offhours</small></footer>
     </main>
   );
 }

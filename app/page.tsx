@@ -41,16 +41,15 @@ export default function Home() {
   return (
     <main>
       <nav className="nav shell" aria-label="Primary navigation">
-        <Link className="wordmark" href="/">sundays<span>.</span><small>for offhours</small></Link>
+        <Link className="wordmark" href="/">sundays<span>.</span><small>offhours</small></Link>
         <div className="nav-links"><a href="#work">Explore</a><a href="#about">About</a></div>
         <a className="github-button" href="https://github.com" target="_blank" rel="noreferrer"><span className="github-dot" aria-hidden="true" /> Continue with GitHub</a>
       </nav>
       <section className="hero shell">
-        <div className="eyebrow"><span>001</span> Sundays are for offhours</div>
+        <div className="eyebrow"><span>001</span> Offhours index</div>
         <h1>Made after work.<br /><em>Shared with the world.</em></h1>
         <div className="hero-bottom"><p>A gallery for the little apps that became<br />something worth showing.</p><a className="text-link" href="#work">See what&apos;s being made <Arrow /></a></div>
       </section>
-      <section className="ticker" aria-label="Gallery facts"><div><span>Independent software</span><b>✳</b><span>Built for the joy of it</span><b>✳</b><span>Open on GitHub</span><b>✳</b><span>Independent software</span><b>✳</b><span>Built for the joy of it</span></div></section>
       <section className="projects shell" id="work">
         <div className="section-head"><div><span className="section-number">01 / 03</span><h2>Fresh from the<br />side-project folder.</h2></div><p>Small software, big personality.<br />Selected weekly.</p></div>
         <div className="project-grid">
@@ -75,7 +74,7 @@ export default function Home() {
         <span className="section-number">03 / 03</span><div className="submit-mark">↘</div><h2>That thing you made<br />last weekend?</h2>
         <div><p>It belongs here.</p><a className="dark-button" href="https://github.com" target="_blank" rel="noreferrer"><span className="github-dot light" aria-hidden="true" /> Submit from GitHub <Arrow /></a></div>
       </section>
-      <footer className="footer shell"><Link className="wordmark" href="/">sundays<span>.</span><small>for offhours</small></Link><p>For people who make things<br />after they&apos;re done making things.</p><div><a href="#work">Explore</a><a href="https://github.com">GitHub</a><a href="mailto:hello@sundays.gallery">Say hello</a></div><small>© 2026 sundays</small></footer>
+      <footer className="footer shell"><Link className="wordmark" href="/">sundays<span>.</span><small>offhours</small></Link><p>For people who make things<br />after they&apos;re done making things.</p><div><a href="#work">Explore</a><a href="https://github.com">GitHub</a><a href="mailto:hello@sundays.gallery">Say hello</a></div><small>© 2026 sundays</small></footer>
     </main>
   );
 }
