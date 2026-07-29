@@ -41,12 +41,12 @@ export default function Home() {
   return (
     <main>
       <nav className="nav shell" aria-label="Primary navigation">
-        <Link className="wordmark" href="/">offhours<span>.</span></Link>
+        <Link className="wordmark" href="/">sundays<span>.</span><small>for offhours</small></Link>
         <div className="nav-links"><a href="#work">Explore</a><a href="#about">About</a></div>
         <a className="github-button" href="https://github.com" target="_blank" rel="noreferrer"><span className="github-dot" aria-hidden="true" /> Continue with GitHub</a>
       </nav>
       <section className="hero shell">
-        <div className="eyebrow"><span>001</span> Built after hours</div>
+        <div className="eyebrow"><span>001</span> Sundays are for offhours</div>
         <h1>Made after work.<br /><em>Shared with the world.</em></h1>
         <div className="hero-bottom"><p>A gallery for the little apps that became<br />something worth showing.</p><a className="text-link" href="#work">See what&apos;s being made <Arrow /></a></div>
       </section>
@@ -66,7 +66,7 @@ export default function Home() {
       </section>
       <section className="makers shell" id="about">
         <span className="section-number">02 / 03</span>
-        <div className="makers-copy"><h2>No pitches.<br />No growth hacks.<br /><em>Just good work.</em></h2><p>offhours is for people who make things because they can&apos;t quite stop themselves. Your page, your projects, your GitHub. We host the gallery—not your work.</p><a className="light-button" href="https://github.com" target="_blank" rel="noreferrer">Add yours with GitHub <Arrow /></a></div>
+        <div className="makers-copy"><h2>No pitches.<br />No growth hacks.<br /><em>Just good work.</em></h2><p>sundays is for people who make things in their offhours because they can&apos;t quite stop themselves. Your page, your projects, your GitHub. We host the gallery—not your work.</p><a className="light-button" href="https://github.com" target="_blank" rel="noreferrer">Add yours with GitHub <Arrow /></a></div>
         <div className="maker-stack" aria-label="Featured makers">
           {projects.slice(0, 3).map((project, index) => <Link className="maker-row" href={`/maker/${project.handle}`} key={project.handle}><span className={`avatar avatar-${index + 1}`} aria-hidden="true">{project.maker.charAt(0)}</span><span><strong>{project.maker}</strong><small>@{project.handle}</small></span><b>{String(index + 1).padStart(2, "0")} projects</b><Arrow /></Link>)}
         </div>
@@ -75,7 +75,7 @@ export default function Home() {
         <span className="section-number">03 / 03</span><div className="submit-mark">↘</div><h2>That thing you made<br />last weekend?</h2>
         <div><p>It belongs here.</p><a className="dark-button" href="https://github.com" target="_blank" rel="noreferrer"><span className="github-dot light" aria-hidden="true" /> Submit from GitHub <Arrow /></a></div>
       </section>
-      <footer className="footer shell"><Link className="wordmark" href="/">offhours<span>.</span></Link><p>For people who make things<br />after they&apos;re done making things.</p><div><a href="#work">Explore</a><a href="https://github.com">GitHub</a><a href="mailto:hello@offhours.gallery">Say hello</a></div><small>© 2026 offhours</small></footer>
+      <footer className="footer shell"><Link className="wordmark" href="/">sundays<span>.</span><small>for offhours</small></Link><p>For people who make things<br />after they&apos;re done making things.</p><div><a href="#work">Explore</a><a href="https://github.com">GitHub</a><a href="mailto:hello@sundays.gallery">Say hello</a></div><small>© 2026 sundays</small></footer>
     </main>
   );
 }

@@ -20,7 +20,7 @@ export default async function MakerPage({ params }: { params: Promise<{ handle: 
   return (
     <main className="profile" style={{ "--profile-accent": maker.accent } as React.CSSProperties}>
       <nav className="nav shell">
-        <Link className="wordmark" href="/">offhours<span>.</span></Link>
+        <Link className="wordmark" href="/">sundays<span>.</span><small>for offhours</small></Link>
         <Link className="back-link" href="/">← Back to gallery</Link>
         <a className="github-button" href="https://github.com" target="_blank" rel="noreferrer"><span className="github-dot" /> GitHub profile</a>
       </nav>
@@ -31,7 +31,7 @@ export default async function MakerPage({ params }: { params: Promise<{ handle: 
         <div className="profile-facts"><span>Based in</span><strong>{maker.location}</strong><span>Making since</span><strong>2023</strong></div>
       </section>
       <section className="profile-work shell">
-        <div className="section-head"><div><span className="section-number">THE WORK</span><h2>Things made<br />after hours.</h2></div><p>All projects live on the maker&apos;s GitHub.<br />offhours only points the way.</p></div>
+        <div className="section-head"><div><span className="section-number">THE WORK</span><h2>Things made<br />after hours.</h2></div><p>All projects live on the maker&apos;s GitHub.<br />sundays only points the way.</p></div>
         <div className="profile-projects">
           {maker.projects.map((project, index) => (
             <a href="https://github.com" target="_blank" rel="noreferrer" className="profile-project" key={project}>
@@ -40,7 +40,7 @@ export default async function MakerPage({ params }: { params: Promise<{ handle: 
           ))}
         </div>
       </section>
-      <footer className="profile-footer shell"><Link href="/">← Explore more makers</Link><small>© 2026 offhours</small></footer>
+      <footer className="profile-footer shell"><Link href="/">← Explore more makers</Link><small>© 2026 sundays · for offhours</small></footer>
     </main>
   );
 }
