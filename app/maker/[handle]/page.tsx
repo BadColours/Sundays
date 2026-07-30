@@ -1,29 +1,30 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ProjectPreview } from "../../ProjectPreview";
+import { SiteNav } from "../../SiteNav";
+import { mockMakerMap, type MockMaker } from "../../galleryData";
 
-const makers = {
-  mayachen: { name: "Maya Chen", bio: "Designer-engineer making small tools for slower, more deliberate days.", location: "Brooklyn, NY", projects: ["Sundial", "Index Zero", "Weather Window"], accent: "#ceff1a" },
-  theohart: { name: "Theo Hart", bio: "Independent developer interested in local-first software and quiet interfaces.", location: "London, UK", projects: ["Fieldnotes", "Commonplace"], accent: "#89a9ff" },
-  noorahmed: { name: "Noor Ahmed", bio: "Creative technologist building gardens for the strange corners of the internet.", location: "Toronto, CA", projects: ["Loose Leaf", "Sideways"], accent: "#ff826d" },
-  elimorgan: { name: "Eli Morgan", bio: "Sound designer and developer exploring playful ways to listen.", location: "Portland, OR", projects: ["Radio Silence", "Hush"], accent: "#b893e6" },
-} as const;
+const makers: Record<string, MockMaker> = {
+  mayachen: { name: "Maya Chen", bio: "Designer-engineer making small tools for slower, more deliberate days.", location: "Brooklyn, NY", projects: [{ name: "Altitude", type: "flight" }, { name: "Index Zero", type: "leaf" }, { name: "Weather Window", type: "radio" }], accent: "#2947ff" },
+  theohart: { name: "Theo Hart", bio: "Independent developer interested in local-first software and quiet interfaces.", location: "London, UK", projects: [{ name: "Touchline", type: "soccer" }, { name: "Commonplace", type: "index" }], accent: "#ff5b55" },
+  noorahmed: { name: "Noor Ahmed", bio: "Creative technologist building gardens for the strange corners of the internet.", location: "Toronto, CA", projects: [{ name: "Bearings", type: "navigation" }, { name: "Sideways", type: "sundial" }], accent: "#35d456" },
+  elimorgan: { name: "Eli Morgan", bio: "Sound designer and developer exploring playful ways to listen.", location: "Portland, OR", projects: [{ name: "Radio Silence", type: "radio" }, { name: "Hush", type: "hush" }], accent: "#111111" },
+  anikabose: { name: "Anika Bose", bio: "Designer and developer building personal archives for recurring ideas.", location: "Mumbai, IN", projects: [{ name: "Commonplace", type: "index" }], accent: "#7e22ce" },
+  jonbell: { name: "Jon Bell", bio: "Independent coder making small tools for quieter spaces.", location: "Chicago, IL", projects: [{ name: "Hush", type: "hush" }], accent: "#35d456" },
+};
 
 export function generateStaticParams() {
-  return Object.keys(makers).map((handle) => ({ handle }));
+  return [...Object.keys(makers), ...Object.keys(mockMakerMap)].map((handle) => ({ handle }));
 }
 
 export default async function MakerPage({ params }: { params: Promise<{ handle: string }> }) {
   const { handle } = await params;
-  const maker = makers[handle as keyof typeof makers];
+  const maker = makers[handle] ?? mockMakerMap[handle];
   if (!maker) notFound();
 
   return (
     <main className="profile" style={{ "--profile-accent": maker.accent } as React.CSSProperties}>
-      <nav className="nav shell">
-        <Link className="wordmark" href="/">sundays<span>.</span><small>offhours</small></Link>
-        <Link className="back-link" href="/">← Back to gallery</Link>
-        <a className="github-button" href="https://github.com" target="_blank" rel="noreferrer"><span className="github-dot" /> GitHub profile</a>
-      </nav>
+      <SiteNav />
       <section className="profile-hero shell">
         <div className="profile-index">MAKER / @{handle}</div>
         <div className="profile-avatar">{maker.name.split(" ").map((part) => part[0]).join("")}</div>
@@ -31,11 +32,20 @@ export default async function MakerPage({ params }: { params: Promise<{ handle: 
         <div className="profile-facts"><span>Based in</span><strong>{maker.location}</strong><span>Making since</span><strong>2023</strong></div>
       </section>
       <section className="profile-work shell">
-        <div className="section-head"><div><span className="section-number">THE WORK</span><h2>Things made<br />after hours.</h2></div><p>All projects live on the maker&apos;s GitHub.<br />sundays only points the way.</p></div>
         <div className="profile-projects">
           {maker.projects.map((project, index) => (
-            <a href="https://github.com" target="_blank" rel="noreferrer" className="profile-project" key={project}>
-              <span>0{index + 1}</span><strong>{project}</strong><small>{index === 0 ? "Featured project" : "Open source experiment"}</small><b>GitHub ↗</b>
+            <a href="https://github.com" target="_blank" rel="noreferrer" className="profile-project-card" key={project.name}>
+              <div className={`profile-thumb${project.thumbnail ? " creator-image-frame" : ""}`}>
+                {project.thumbnail ? (
+                  <img className="creator-preview" src={project.thumbnail} alt={`Preview of ${project.name}`} />
+                ) : (
+                  <>
+                    <div className="browser-chrome"><span /><span /><span /><b>{project.name.toLowerCase()}.app</b></div>
+                    <ProjectPreview type={project.type} />
+                  </>
+                )}
+              </div>
+              <div className="profile-project-caption"><span>0{index + 1}</span><strong>{project.name}</strong><small>{index === 0 ? "Featured project" : "Open source experiment"}</small><b>GitHub ↗</b></div>
             </a>
           ))}
         </div>
