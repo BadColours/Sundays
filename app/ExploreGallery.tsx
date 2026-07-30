@@ -5,7 +5,8 @@ import Link from "next/link";
 import { ProjectPreview } from "./ProjectPreview";
 import { galleryProjects } from "./galleryData";
 
-const types = ["All", "Games", "Navigation", "Audio", "Tools"] as const;
+const types = ["All", "Navigation", "Audio", "Tools"] as const;
+const exploreCatalogue = galleryProjects.slice(6).filter((project) => project.type !== "Games");
 
 function shuffleProjects(projects: typeof galleryProjects) {
   const shuffled = [...projects];
@@ -23,7 +24,7 @@ function Arrow() {
 export function ExploreGallery({ featuredOnly = false }: { featuredOnly?: boolean }) {
   const [activeType, setActiveType] = useState<(typeof types)[number]>("All");
   const [visibleCount, setVisibleCount] = useState(10);
-  const [exploreProjects, setExploreProjects] = useState(() => galleryProjects.slice(6));
+  const [exploreProjects, setExploreProjects] = useState(() => exploreCatalogue);
   const shuffleExplore = () => {
     setExploreProjects((projects) => shuffleProjects(projects));
     setVisibleCount(10);
