@@ -32,9 +32,10 @@ export default async function SubmitPage({ searchParams }: { searchParams: Promi
           <form className="submission-form" action="/api/projects" method="post">
             <div className="signed-in-line"><img src={creator.avatar_url} alt="" /><span>Submitting as <b>{creator.display_name}</b> · @{creator.github_handle}</span><Link href="/dashboard">View dashboard</Link></div>
             <label>Live project URL<input name="live_url" type="url" inputMode="url" placeholder="https://your-project.example" required /></label>
+            <label>GitHub repository <small>Optional · personal repositories are verified automatically</small><input name="repository_url" type="url" inputMode="url" placeholder={`https://github.com/${creator.github_handle}/project`} /></label>
             <label>Project title<input name="title" type="text" minLength={2} maxLength={80} required /></label>
             <label>Short description<textarea name="description" minLength={10} maxLength={240} rows={4} required /></label>
-            <p className="permission-copy">By submitting, you confirm the public page is yours to share and grant Sundays permission to capture and display a promotional image of it. Review affects gallery placement only; your profile remains public.</p>
+            <p className="permission-copy">By submitting, you confirm the public page is yours to share and grant Sundays permission to capture and display a promotional image of it. A matching personal GitHub repository adds maker verification; it is not required for gallery review.</p>
             <button className="mvp-button primary" type="submit">Submit for review ↗</button>
           </form>
         )}

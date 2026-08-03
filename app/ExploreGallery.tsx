@@ -78,7 +78,7 @@ export function ExploreGallery({ featuredOnly = false }: { featuredOnly?: boolea
             </Link>
             <div className={`project-meta${featuredOnly ? "" : " without-number"}`}>
               {featuredOnly && <span className="project-number">{project.number}</span>}
-              <div className="project-copy"><h3><Link href={`/demo/${project.handle}`}>{project.title}</Link></h3><Link className="project-maker" href={`/maker/${project.handle}`}>{project.maker}</Link><p>{project.description}</p></div>
+              <div className="project-copy"><h3><Link href={`/demo/${project.handle}`}>{project.title}</Link></h3><Link className="project-maker" href={`/demo/maker/${project.handle}`}>{project.maker}</Link><p>{project.description}</p></div>
             </div>
           </article>
         ))}

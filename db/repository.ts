@@ -2,6 +2,8 @@ import { env } from "cloudflare:workers";
 
 export type ModerationStatus = "draft" | "submitted" | "approved" | "declined" | "unavailable";
 export type ThumbnailStatus = "pending" | "ready" | "failed";
+export type VerificationStatus = "unverified" | "verified" | "disputed";
+export type LinkCheckStatus = "unchecked" | "healthy" | "failing";
 
 export type Creator = {
   id: string;
@@ -21,11 +23,16 @@ export type Project = {
   title: string;
   short_description: string;
   live_url: string;
+  repository_url: string | null;
+  verification_status: VerificationStatus;
   moderation_status: ModerationStatus;
   thumbnail_status: ThumbnailStatus;
   thumbnail_storage_key: string | null;
   thumbnail_error: string | null;
   moderation_note: string | null;
+  last_checked_at: string | null;
+  last_check_status: LinkCheckStatus;
+  consecutive_check_failures: number;
   created_at: string;
   updated_at: string;
   published_at: string | null;
@@ -33,6 +40,20 @@ export type Project = {
   display_name?: string;
   avatar_url?: string;
   github_profile_url?: string;
+};
+
+export type ProjectReport = {
+  id: string;
+  project_id: string;
+  reason: string;
+  details: string | null;
+  status: "open" | "reviewed" | "dismissed";
+  created_at: string;
+  project_title: string;
+  project_slug: string;
+  project_live_url: string;
+  github_handle: string;
+  display_name: string;
 };
 
 type RuntimeBindings = {
@@ -77,11 +98,16 @@ const schemaStatements = [
     title TEXT NOT NULL,
     short_description TEXT NOT NULL,
     live_url TEXT NOT NULL,
+    repository_url TEXT,
+    verification_status TEXT NOT NULL DEFAULT 'unverified',
     moderation_status TEXT NOT NULL DEFAULT 'submitted',
     thumbnail_status TEXT NOT NULL DEFAULT 'pending',
     thumbnail_storage_key TEXT,
     thumbnail_error TEXT,
     moderation_note TEXT,
+    last_checked_at TEXT,
+    last_check_status TEXT NOT NULL DEFAULT 'unchecked',
+    consecutive_check_failures INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL,
     published_at TEXT
@@ -111,6 +137,19 @@ const schemaStatements = [
     created_at TEXT NOT NULL
   )`,
   `CREATE INDEX IF NOT EXISTS project_reports_project_idx ON project_reports (project_id, status)`,
+  `CREATE TABLE IF NOT EXISTS report_rate_limits (
+    fingerprint TEXT PRIMARY KEY NOT NULL,
+    window_start TEXT NOT NULL,
+    count INTEGER NOT NULL DEFAULT 0
+  )`,
+];
+
+const projectUpgradeStatements = [
+  "ALTER TABLE projects ADD COLUMN repository_url TEXT",
+  "ALTER TABLE projects ADD COLUMN verification_status TEXT NOT NULL DEFAULT 'unverified'",
+  "ALTER TABLE projects ADD COLUMN last_checked_at TEXT",
+  "ALTER TABLE projects ADD COLUMN last_check_status TEXT NOT NULL DEFAULT 'unchecked'",
+  "ALTER TABLE projects ADD COLUMN consecutive_check_failures INTEGER NOT NULL DEFAULT 0",
 ];
 
 let initialized = false;
@@ -118,6 +157,9 @@ export async function ensureSchema() {
   if (initialized) return;
   const db = database();
   await db.batch(schemaStatements.map((sql) => db.prepare(sql)));
+  for (const sql of projectUpgradeStatements) {
+    try { await db.prepare(sql).run(); } catch { /* Column already exists. */ }
+  }
   initialized = true;
 }
 
@@ -228,15 +270,15 @@ async function uniqueSlug(title: string) {
   return `${base}-${crypto.randomUUID().slice(0, 8)}`;
 }
 
-export async function createProject(input: { creatorId: string; title: string; description: string; liveUrl: string }): Promise<Project> {
+export async function createProject(input: { creatorId: string; title: string; description: string; liveUrl: string; repositoryUrl: string | null; verificationStatus: VerificationStatus }): Promise<Project> {
   await ensureSchema();
   const id = crypto.randomUUID();
   const slug = await uniqueSlug(input.title);
   const now = new Date().toISOString();
   await database().prepare(`INSERT INTO projects
-    (id, creator_id, slug, title, short_description, live_url, moderation_status, thumbnail_status, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, 'submitted', 'pending', ?, ?)`)
-    .bind(id, input.creatorId, slug, input.title, input.description, input.liveUrl, now, now).run();
+    (id, creator_id, slug, title, short_description, live_url, repository_url, verification_status, moderation_status, thumbnail_status, last_checked_at, last_check_status, consecutive_check_failures, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'submitted', 'pending', ?, 'healthy', 0, ?, ?)`)
+    .bind(id, input.creatorId, slug, input.title, input.description, input.liveUrl, input.repositoryUrl, input.verificationStatus, now, now, now).run();
   return (await getProjectById(id))!;
 }
 
@@ -257,13 +299,14 @@ export async function listProjectsForOwner(creatorId: string): Promise<Project[]
   return result.results;
 }
 
-export async function updateOwnedProject(id: string, creatorId: string, input: { title: string; description: string; liveUrl: string }) {
+export async function updateOwnedProject(id: string, creatorId: string, input: { title: string; description: string; liveUrl: string; repositoryUrl: string | null; verificationStatus: VerificationStatus }) {
   await ensureSchema();
   const project = await getOwnedProject(id, creatorId);
   if (!project) return false;
   const nextStatus: ModerationStatus = project.moderation_status === "approved" ? "submitted" : project.moderation_status === "unavailable" ? "submitted" : project.moderation_status;
-  await database().prepare(`UPDATE projects SET title = ?, short_description = ?, live_url = ?, moderation_status = ?, moderation_note = NULL, updated_at = ? WHERE id = ? AND creator_id = ?`)
-    .bind(input.title, input.description, input.liveUrl, nextStatus, new Date().toISOString(), id, creatorId).run();
+  const now = new Date().toISOString();
+  await database().prepare(`UPDATE projects SET title = ?, short_description = ?, live_url = ?, repository_url = ?, verification_status = ?, moderation_status = ?, moderation_note = NULL, last_checked_at = ?, last_check_status = 'healthy', consecutive_check_failures = 0, updated_at = ? WHERE id = ? AND creator_id = ?`)
+    .bind(input.title, input.description, input.liveUrl, input.repositoryUrl, input.verificationStatus, nextStatus, now, now, id, creatorId).run();
   return true;
 }
 
@@ -291,6 +334,16 @@ export async function listProjectsForModeration(): Promise<Project[]> {
   return result.results;
 }
 
+export async function listProjectsForHealthCheck(limit = 12): Promise<Project[]> {
+  await ensureSchema();
+  const result = await database().prepare(`${joinedProjectSelect()}
+    WHERE projects.moderation_status = 'approved'
+      OR (projects.moderation_status = 'unavailable' AND projects.moderation_note LIKE 'Automatic link check:%')
+    ORDER BY CASE WHEN projects.last_checked_at IS NULL THEN 0 ELSE 1 END, projects.last_checked_at ASC
+    LIMIT ?`).bind(limit).all<Project>();
+  return result.results;
+}
+
 export async function moderateProject(id: string, action: "approve" | "decline" | "unavailable" | "restore", note: string | null) {
   await ensureSchema();
   const now = new Date().toISOString();
@@ -304,4 +357,73 @@ export async function createReport(projectId: string, reason: string, details: s
   await ensureSchema();
   await database().prepare("INSERT INTO project_reports (id, project_id, reason, details, status, created_at) VALUES (?, ?, ?, ?, 'open', ?)")
     .bind(crypto.randomUUID(), projectId, reason, details, new Date().toISOString()).run();
+}
+
+export async function consumeReportAllowance(fingerprint: string, limit = 5) {
+  await ensureSchema();
+  const now = new Date().toISOString();
+  const db = database();
+  const cutoff = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
+  await db.batch([
+    db.prepare("DELETE FROM report_rate_limits WHERE window_start < ?").bind(cutoff),
+    db.prepare(`INSERT INTO report_rate_limits (fingerprint, window_start, count) VALUES (?, ?, 1)
+      ON CONFLICT(fingerprint) DO UPDATE SET count = count + 1`).bind(fingerprint, now),
+  ]);
+  const row = await db.prepare("SELECT count FROM report_rate_limits WHERE fingerprint = ? LIMIT 1").bind(fingerprint).first<{ count: number }>();
+  return (row?.count ?? limit + 1) <= limit;
+}
+
+export async function listOpenReports(): Promise<ProjectReport[]> {
+  await ensureSchema();
+  const result = await database().prepare(`SELECT project_reports.*, projects.title AS project_title, projects.slug AS project_slug,
+    projects.live_url AS project_live_url, creators.github_handle, creators.display_name
+    FROM project_reports
+    JOIN projects ON projects.id = project_reports.project_id
+    JOIN creators ON creators.id = projects.creator_id
+    WHERE project_reports.status = 'open'
+    ORDER BY project_reports.created_at DESC`).all<ProjectReport>();
+  return result.results;
+}
+
+export async function resolveProjectReport(reportId: string, action: "reviewed" | "dismissed" | "unavailable") {
+  await ensureSchema();
+  const db = database();
+  const report = await db.prepare("SELECT project_id, reason FROM project_reports WHERE id = ? AND status = 'open' LIMIT 1")
+    .bind(reportId).first<{ project_id: string; reason: string }>();
+  if (!report) return false;
+  const now = new Date().toISOString();
+  const updates = [db.prepare("UPDATE project_reports SET status = ? WHERE id = ?").bind(action === "dismissed" ? "dismissed" : "reviewed", reportId)];
+  if (action === "unavailable") {
+    updates.push(db.prepare(`UPDATE projects SET moderation_status = 'unavailable', verification_status = CASE WHEN ? THEN 'disputed' ELSE verification_status END, moderation_note = ?, published_at = NULL, updated_at = ? WHERE id = ?`)
+      .bind(report.reason === "ownership_dispute" ? 1 : 0, "A visitor reported a problem with this project. Check the live URL or repository, then update the project to resubmit it.", now, report.project_id));
+  }
+  await db.batch(updates);
+  return true;
+}
+
+export async function setProjectLinkHealth(id: string, healthy: boolean, message?: string) {
+  await ensureSchema();
+  const db = database();
+  const project = await db.prepare("SELECT consecutive_check_failures, moderation_status, moderation_note FROM projects WHERE id = ? LIMIT 1")
+    .bind(id).first<{ consecutive_check_failures: number; moderation_status: ModerationStatus; moderation_note: string | null }>();
+  if (!project) return null;
+  const now = new Date().toISOString();
+  if (healthy) {
+    const autoRestore = project.moderation_status === "unavailable" && project.moderation_note?.startsWith("Automatic link check:");
+    await db.prepare(`UPDATE projects SET last_checked_at = ?, last_check_status = 'healthy', consecutive_check_failures = 0,
+      moderation_status = CASE WHEN ? THEN 'approved' ELSE moderation_status END,
+      moderation_note = CASE WHEN ? THEN NULL ELSE moderation_note END,
+      published_at = CASE WHEN ? THEN ? ELSE published_at END, updated_at = ? WHERE id = ?`)
+      .bind(now, autoRestore ? 1 : 0, autoRestore ? 1 : 0, autoRestore ? 1 : 0, now, now, id).run();
+    return { status: "healthy" as const, failures: 0, restored: autoRestore };
+  }
+  const failures = (project.consecutive_check_failures ?? 0) + 1;
+  const markUnavailable = failures >= 3 && project.moderation_status === "approved";
+  await db.prepare(`UPDATE projects SET last_checked_at = ?, last_check_status = 'failing', consecutive_check_failures = ?,
+    moderation_status = CASE WHEN ? THEN 'unavailable' ELSE moderation_status END,
+    moderation_note = CASE WHEN ? THEN ? ELSE moderation_note END,
+    published_at = CASE WHEN ? THEN NULL ELSE published_at END, updated_at = ? WHERE id = ?`)
+    .bind(now, failures, markUnavailable ? 1 : 0, markUnavailable ? 1 : 0,
+      `Automatic link check: the project could not be reached three times${message ? ` (${message})` : ""}. It will return automatically after a successful check.`, markUnavailable ? 1 : 0, now, id).run();
+  return { status: "failing" as const, failures, unavailable: markUnavailable };
 }

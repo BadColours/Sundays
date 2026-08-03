@@ -1,4 +1,4 @@
-import { bindings, getProjectById, setThumbnailState } from "../db/repository";
+import { bindings, getProjectById, setProjectLinkHealth, setThumbnailState } from "../db/repository";
 import { probePublicUrl } from "./url-safety";
 
 const MAX_THUMBNAIL_BYTES = 5_000_000;
@@ -18,6 +18,7 @@ export async function captureProjectThumbnail(projectId: string) {
 
   try {
     const safeUrl = await probePublicUrl(project.live_url);
+    await setProjectLinkHealth(projectId, true);
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 25_000);
     let response: Response;

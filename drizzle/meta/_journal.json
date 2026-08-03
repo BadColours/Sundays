@@ -8,6 +8,13 @@
       "when": 1785721006642,
       "tag": "0000_exotic_hulk",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1785775334021,
+      "tag": "0001_slippery_diamondback",
+      "breakpoints": true
     }
   ]
 }

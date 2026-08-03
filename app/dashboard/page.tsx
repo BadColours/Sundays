@@ -35,11 +35,12 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
             {projects.map((project) => (
               <article className="dashboard-card" key={project.id}>
                 <div className="dashboard-thumb"><ProjectThumbnail project={project} /></div>
-                <div className="dashboard-card-head"><div><span className={`status-chip status-${project.moderation_status}`}>{statusCopy(project)}</span><span className={`status-chip thumbnail-${project.thumbnail_status}`}>Thumbnail: {project.thumbnail_status}</span></div><small>Submitted {new Date(project.created_at).toLocaleDateString()}</small></div>
+                <div className="dashboard-card-head"><div><span className={`status-chip status-${project.moderation_status}`}>{statusCopy(project)}</span><span className={`status-chip thumbnail-${project.thumbnail_status}`}>Thumbnail: {project.thumbnail_status}</span><span className={`status-chip verification-${project.verification_status}`}>{project.verification_status === "verified" ? "Maker verified" : "Unverified"}</span><span className={`status-chip link-${project.last_check_status}`}>Link: {project.last_check_status}</span></div><small>Submitted {new Date(project.created_at).toLocaleDateString()}</small></div>
                 <form className="dashboard-edit-form" action={`/api/projects/${project.id}`} method="post">
                   <input type="hidden" name="action" value="update" />
                   <label>Title<input name="title" defaultValue={project.title} minLength={2} maxLength={80} required /></label>
                   <label>Live URL<input name="live_url" type="url" defaultValue={project.live_url} required /></label>
+                  <label>GitHub repository<input name="repository_url" type="url" defaultValue={project.repository_url ?? ""} placeholder={`https://github.com/${creator.github_handle}/project`} /></label>
                   <label>Description<textarea name="description" defaultValue={project.short_description} minLength={10} maxLength={240} rows={3} required /></label>
                   {project.moderation_note && <p className="moderation-feedback"><b>Review note:</b> {project.moderation_note}</p>}
                   <div className="form-actions"><button type="submit">Save changes</button>{project.moderation_status === "approved" && <Link href={`/project/${project.slug}`}>View project page</Link>}</div>

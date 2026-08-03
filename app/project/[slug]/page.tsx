@@ -27,12 +27,12 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   };
 }
 
-export default async function ProjectPage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<{ reported?: string }> }) {
+export default async function ProjectPage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<{ reported?: string; report_limit?: string }> }) {
   const { slug } = await params;
   let project;
   try { project = await getApprovedProjectBySlug(slug); } catch { project = null; }
   if (!project) notFound();
-  const { reported } = await searchParams;
+  const { reported, report_limit: reportLimit } = await searchParams;
   return (
     <main>
       <SiteNav />
@@ -45,15 +45,17 @@ export default async function ProjectPage({ params, searchParams }: { params: Pr
           <div className="project-creator-line">
             <img src={project.avatar_url} alt="" />
             <span><Link href={`/maker/${project.github_handle}`}>{project.display_name}</Link></span>
+            {project.verification_status === "verified" && <span className="verification-mark">Verified maker</span>}
           </div>
+          {project.repository_url && <a className="project-repository-link" href={project.repository_url} target="_blank" rel="noopener noreferrer">GitHub repository ↗</a>}
           <a className="mvp-button primary" href={project.live_url} target="_blank" rel="noopener noreferrer">Launch project ↗</a>
           <small>Published {project.published_at ? new Date(project.published_at).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }) : "on Sundays"}</small>
         </div>
         <details className="report-control">
-          <summary>Report a broken link</summary>
-          {reported ? <p>Thanks. The report is queued for review; the project remains available until it is checked.</p> : (
+          <summary>Report a problem</summary>
+          {reported ? <p>Thanks. The report is queued for review; the project remains available until it is checked.</p> : reportLimit ? <p>Too many reports were sent from this browser. Please try again later.</p> : (
             <form action={`/api/projects/${project.id}/report`} method="post">
-              <input type="hidden" name="reason" value="broken_link" />
+              <label>Reason<select name="reason" defaultValue="broken_link"><option value="broken_link">Broken link</option><option value="unsafe_content">Unsafe or misleading content</option><option value="copied_work">Copied work</option><option value="ownership_dispute">Ownership dispute</option><option value="other">Something else</option></select></label>
               <label>Optional details<textarea name="details" maxLength={500} /></label>
               <button type="submit">Send report</button>
             </form>

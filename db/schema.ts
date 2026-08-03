@@ -1,4 +1,4 @@
-import { index, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
+import { index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 
 export const creators = sqliteTable("creators", {
   id: text("id").primaryKey(),
@@ -21,11 +21,16 @@ export const projects = sqliteTable("projects", {
   title: text("title").notNull(),
   shortDescription: text("short_description").notNull(),
   liveUrl: text("live_url").notNull(),
+  repositoryUrl: text("repository_url"),
+  verificationStatus: text("verification_status", { enum: ["unverified", "verified", "disputed"] }).notNull().default("unverified"),
   moderationStatus: text("moderation_status", { enum: ["draft", "submitted", "approved", "declined", "unavailable"] }).notNull().default("submitted"),
   thumbnailStatus: text("thumbnail_status", { enum: ["pending", "ready", "failed"] }).notNull().default("pending"),
   thumbnailStorageKey: text("thumbnail_storage_key"),
   thumbnailError: text("thumbnail_error"),
   moderationNote: text("moderation_note"),
+  lastCheckedAt: text("last_checked_at"),
+  lastCheckStatus: text("last_check_status", { enum: ["unchecked", "healthy", "failing"] }).notNull().default("unchecked"),
+  consecutiveCheckFailures: integer("consecutive_check_failures").notNull().default(0),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
   publishedAt: text("published_at"),
@@ -57,3 +62,9 @@ export const projectReports = sqliteTable("project_reports", {
   status: text("status", { enum: ["open", "reviewed", "dismissed"] }).notNull().default("open"),
   createdAt: text("created_at").notNull(),
 }, (table) => [index("project_reports_project_idx").on(table.projectId, table.status)]);
+
+export const reportRateLimits = sqliteTable("report_rate_limits", {
+  fingerprint: text("fingerprint").primaryKey(),
+  windowStart: text("window_start").notNull(),
+  count: integer("count").notNull().default(0),
+});

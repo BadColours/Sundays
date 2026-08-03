@@ -24,7 +24,7 @@ export function PublicGallery({ projects, emptyTitle = "Make a page for what you
           <div className="project-meta without-number">
             <div className="project-copy">
               <h3><a href={project.live_url} target="_blank" rel="noopener noreferrer">{project.title}</a></h3>
-              <Link className="project-maker" href={`/maker/${project.github_handle}`}>{project.display_name}</Link>
+              <div className="project-maker-line"><Link className="project-maker" href={`/maker/${project.github_handle}`}>{project.display_name}</Link>{project.verification_status === "verified" && <span className="verification-mark">Verified</span>}</div>
               <p>{project.short_description}</p>
             </div>
             <div className="project-side">

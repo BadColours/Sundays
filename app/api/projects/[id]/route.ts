@@ -14,7 +14,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       await withdrawOwnedProject(id, creator.id);
       return NextResponse.redirect(new URL("/dashboard?updated=withdrawn", request.url), 303);
     }
-    const input = await verifyProjectFields(form);
+    const input = await verifyProjectFields(form, creator.github_handle);
     const updated = await updateOwnedProject(id, creator.id, input);
     if (!updated) return new NextResponse("Not found", { status: 404 });
     return NextResponse.redirect(new URL("/dashboard?updated=project", request.url), 303);

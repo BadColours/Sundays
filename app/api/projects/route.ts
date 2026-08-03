@@ -8,7 +8,7 @@ export async function POST(request: NextRequest) {
   const creator = await currentCreator();
   if (!creator) return NextResponse.redirect(new URL("/submit?error=signin_required", request.url), 303);
   try {
-    const input = await verifyProjectFields(await request.formData());
+    const input = await verifyProjectFields(await request.formData(), creator.github_handle);
     const project = await createProject({ creatorId: creator.id, ...input });
     await captureProjectThumbnail(project.id);
     return NextResponse.redirect(new URL(`/dashboard?submitted=${encodeURIComponent(project.id)}`, request.url), 303);

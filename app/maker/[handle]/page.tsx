@@ -4,8 +4,6 @@ import { notFound } from "next/navigation";
 import { getCreatorByHandle, listPublishedProjectsForCreator } from "../../../db/repository";
 import { ProjectThumbnail } from "../../ProjectThumbnail";
 import { SiteNav } from "../../SiteNav";
-import { ProjectPreview } from "../../ProjectPreview";
-import { galleryProjects } from "../../fixtures/demoGallery";
 
 export const dynamic = "force-dynamic";
 
@@ -13,45 +11,15 @@ export async function generateMetadata({ params }: { params: Promise<{ handle: s
   const { handle } = await params;
   try {
     const creator = await getCreatorByHandle(handle);
-    if (!creator) {
-      const demoProject = galleryProjects.find((project) => project.handle === handle);
-      return demoProject
-        ? { title: `${demoProject.maker} — Sundays demo`, description: `Demo profile for ${demoProject.maker} on Sundays.` }
-        : { title: "Maker not found — sundays" };
-    }
+    if (!creator) return { title: "Maker not found — sundays" };
     return { title: `${creator.display_name} (@${creator.github_handle}) — sundays`, description: `Published projects by ${creator.display_name} on Sundays.` };
   } catch { return { title: "Maker — sundays" }; }
 }
 
 export default async function MakerPage({ params }: { params: Promise<{ handle: string }> }) {
   const { handle } = await params;
-  const demoProject = galleryProjects.find((project) => project.handle === handle);
   let creator;
   try { creator = await getCreatorByHandle(handle); } catch { creator = null; }
-  if (!creator && demoProject) {
-    const initials = demoProject.maker.split(" ").map((part) => part[0]).join("");
-    return (
-      <main className="profile">
-        <SiteNav demo />
-        <section className="profile-hero shell demo-profile-hero">
-          <div className="profile-index">CONCEPT PROFILE / @{demoProject.handle}</div>
-          <div className="profile-avatar">{initials}</div>
-          <div className="profile-title"><h1>{demoProject.maker}</h1></div>
-        </section>
-        <section className="profile-work shell">
-          <div className="profile-projects">
-            <article className="profile-project-card">
-              <Link className={`profile-thumb${demoProject.thumbnail ? " creator-image-frame" : ""}`} href={`/demo/${demoProject.handle}`} aria-label={`Open ${demoProject.title}`}>
-                {demoProject.thumbnail ? <img className="creator-preview" src={demoProject.thumbnail} alt={`Preview of ${demoProject.title}`} /> : <><div className="browser-chrome"><span /><span /><span /><b>{demoProject.title.toLowerCase()}.app</b></div><ProjectPreview type={demoProject.preview} title={demoProject.title} /></>}
-              </Link>
-              <div className="profile-project-caption"><strong><Link href={`/demo/${demoProject.handle}`}>{demoProject.title}</Link></strong><small>{demoProject.description}</small></div>
-            </article>
-          </div>
-        </section>
-        <footer className="profile-footer shell"><Link href="/demo/explore">← Explore more makers</Link><small>Demo gallery</small></footer>
-      </main>
-    );
-  }
   if (!creator) notFound();
   const projects = await listPublishedProjectsForCreator(creator.id);
   return (
