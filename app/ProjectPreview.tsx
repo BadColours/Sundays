@@ -29,7 +29,7 @@ function ExploreAppPreview({ index }: { index: number }) {
   }
 }
 
-export function ProjectPreview({ type }: { type: string }) {
+export function ProjectPreview({ type, title }: { type: string; title?: string }) {
   if (type.startsWith("mock-")) {
     const index = Number(type.slice(5)) || 0;
     return <ExploreAppPreview index={index} />;

@@ -44,7 +44,7 @@ export default async function ProjectPage({ params, searchParams }: { params: Pr
           <p>{project.short_description}</p>
           <div className="project-creator-line">
             <img src={project.avatar_url} alt="" />
-            <span>Made by <Link href={`/maker/${project.github_handle}`}>{project.display_name}</Link></span>
+            <span><Link href={`/maker/${project.github_handle}`}>{project.display_name}</Link></span>
           </div>
           <a className="mvp-button primary" href={project.live_url} target="_blank" rel="noopener noreferrer">Launch project ↗</a>
           <small>Published {project.published_at ? new Date(project.published_at).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }) : "on Sundays"}</small>

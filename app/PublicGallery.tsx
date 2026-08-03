@@ -22,12 +22,12 @@ export function PublicGallery({ projects, emptyTitle = "Make a page for what you
             <span className="open-pill">Launch project <span aria-hidden="true">↗</span></span>
           </a>
           <div className="project-meta without-number">
-            <div>
-              <h3><Link href={`/project/${project.slug}`}>{project.title}</Link></h3>
+            <div className="project-copy">
+              <h3><a href={project.live_url} target="_blank" rel="noopener noreferrer">{project.title}</a></h3>
+              <Link className="project-maker" href={`/maker/${project.github_handle}`}>{project.display_name}</Link>
               <p>{project.short_description}</p>
             </div>
             <div className="project-side">
-              <Link href={`/maker/${project.github_handle}`}>by {project.display_name}</Link>
               <span>{project.published_at ? new Date(project.published_at).getFullYear() : ""}</span>
             </div>
           </div>

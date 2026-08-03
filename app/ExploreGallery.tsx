@@ -6,7 +6,8 @@ import { ProjectPreview } from "./ProjectPreview";
 import { galleryProjects } from "./fixtures/demoGallery";
 
 const types = ["All", "Navigation", "Audio", "Tools"] as const;
-const exploreCatalogue = galleryProjects.slice(6).filter((project) => project.type !== "Games");
+const exploreCatalogue = galleryProjects.slice(6);
+const pageSize = 12;
 
 function shuffleProjects(projects: typeof galleryProjects) {
   const shuffled = [...projects];
@@ -23,11 +24,11 @@ function Arrow() {
 
 export function ExploreGallery({ featuredOnly = false }: { featuredOnly?: boolean }) {
   const [activeType, setActiveType] = useState<(typeof types)[number]>("All");
-  const [visibleCount, setVisibleCount] = useState(10);
+  const [visibleCount, setVisibleCount] = useState(pageSize);
   const [exploreProjects, setExploreProjects] = useState(() => exploreCatalogue);
   const shuffleExplore = () => {
     setExploreProjects((projects) => shuffleProjects(projects));
-    setVisibleCount(10);
+    setVisibleCount(pageSize);
   };
 
   const sourceProjects = featuredOnly ? galleryProjects.slice(0, 6) : exploreProjects;
@@ -48,7 +49,7 @@ export function ExploreGallery({ featuredOnly = false }: { featuredOnly?: boolea
               type="button"
               role="tab"
               aria-selected={activeType === type}
-              onClick={() => { setActiveType(type); setVisibleCount(10); }}
+              onClick={() => { setActiveType(type); setVisibleCount(pageSize); }}
             >
               {type} <span>{type === "All" ? exploreProjects.length : exploreProjects.filter((project) => project.type === type).length}</span>
             </button>
@@ -59,33 +60,32 @@ export function ExploreGallery({ featuredOnly = false }: { featuredOnly?: boolea
       <div className="project-grid">
         {shownProjects.map((project) => (
           <article className="project-card" key={project.title}>
-            <Link className={`preview-frame ${project.color}${project.thumbnail && !featuredOnly ? " creator-image-frame" : ""}`} href={`/maker/${project.handle}`} aria-label={`View ${project.title} by ${project.maker}`}>
-              {project.thumbnail && featuredOnly ? (
+            <Link className={`preview-frame ${project.color}${project.thumbnail && !featuredOnly ? " creator-image-frame" : ""}`} href={`/demo/${project.handle}`} aria-label={`Open ${project.title}`}>
+              {!featuredOnly ? (
+                project.thumbnail ? <img className="creator-preview explore-curated-preview" src={project.thumbnail} alt={`Preview of ${project.title}`} /> : <ProjectPreview type={project.preview} title={project.title} />
+              ) : project.thumbnail ? (
                 <>
                   <div className="browser-chrome"><span /><span /><span /><b>{project.title.toLowerCase()}.app</b></div>
                   <img className="creator-preview editorial-preview" src={project.thumbnail} alt={`Preview of ${project.title}`} />
                 </>
-              ) : project.thumbnail ? (
-                <img className="creator-preview" src={project.thumbnail} alt={`Preview of ${project.title}`} />
               ) : (
                 <>
                   <div className="browser-chrome"><span /><span /><span /><b>{project.title.toLowerCase()}.app</b></div>
-                  <ProjectPreview type={project.preview} />
+                  <ProjectPreview type={project.preview} title={project.title} />
                 </>
               )}
-              <span className="open-pill">Open project <Arrow /></span>
+              <span className="open-pill">Open app <Arrow /></span>
             </Link>
             <div className={`project-meta${featuredOnly ? "" : " without-number"}`}>
               {featuredOnly && <span className="project-number">{project.number}</span>}
-              <div><h3><Link href={`/maker/${project.handle}`}>{project.title}</Link></h3><p>{project.description}</p></div>
-              <div className="project-side"><Link href={`/maker/${project.handle}`}>by {project.maker}</Link><span>{project.tags.join(" · ")}</span></div>
+              <div className="project-copy"><h3><Link href={`/demo/${project.handle}`}>{project.title}</Link></h3><Link className="project-maker" href={`/maker/${project.handle}`}>{project.maker}</Link><p>{project.description}</p></div>
             </div>
           </article>
         ))}
       </div>
       {!featuredOnly && visibleCount < visibleProjects.length && (
-        <button className="explore-more" type="button" onClick={() => setVisibleCount((count) => count + 10)}>
-          Show 10 more <span>{visibleProjects.length - visibleCount} remaining</span>
+        <button className="explore-more" type="button" onClick={() => setVisibleCount((count) => count + pageSize)}>
+          Show {Math.min(pageSize, visibleProjects.length - shownProjects.length)} more <span>{visibleProjects.length - shownProjects.length} remaining</span>
         </button>
       )}
     </>

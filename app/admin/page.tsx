@@ -21,7 +21,7 @@ export default async function AdminPage() {
             {projects.map((project) => (
               <article className="review-card" key={project.id}>
                 <div className="review-thumb"><ProjectThumbnail project={project} /></div>
-                <div className="review-copy"><span className={`status-chip status-${project.moderation_status}`}>{project.moderation_status}</span><h2>{project.title}</h2><p>{project.short_description}</p><p>by <a href={project.github_profile_url} target="_blank" rel="noopener noreferrer">{project.display_name} · @{project.github_handle}</a></p><a className="text-link" href={project.live_url} target="_blank" rel="noopener noreferrer">Open live project safely ↗</a></div>
+                <div className="review-copy"><span className={`status-chip status-${project.moderation_status}`}>{project.moderation_status}</span><h2>{project.title}</h2><p>{project.short_description}</p><p><a href={project.github_profile_url} target="_blank" rel="noopener noreferrer">{project.display_name} · @{project.github_handle}</a></p><a className="text-link" href={project.live_url} target="_blank" rel="noopener noreferrer">Open live project safely ↗</a></div>
                 <form className="review-actions" action={`/api/admin/projects/${project.id}`} method="post">
                   <label>Private review note<textarea name="note" rows={3} maxLength={500} defaultValue={project.moderation_note ?? ""} /></label>
                   <div>
