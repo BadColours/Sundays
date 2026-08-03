@@ -13,22 +13,26 @@ export async function generateMetadata({ params }: { params: Promise<{ handle: s
   const { handle } = await params;
   try {
     const creator = await getCreatorByHandle(handle);
-    if (!creator) return { title: "Maker not found — sundays" };
+    if (!creator) {
+      const demoProject = galleryProjects.find((project) => project.handle === handle);
+      return demoProject
+        ? { title: `${demoProject.maker} — Sundays demo`, description: `Demo profile for ${demoProject.maker} on Sundays.` }
+        : { title: "Maker not found — sundays" };
+    }
     return { title: `${creator.display_name} (@${creator.github_handle}) — sundays`, description: `Published projects by ${creator.display_name} on Sundays.` };
   } catch { return { title: "Maker — sundays" }; }
 }
 
 export default async function MakerPage({ params }: { params: Promise<{ handle: string }> }) {
   const { handle } = await params;
-  const demoMode = process.env.NODE_ENV !== "production";
-  const demoProject = demoMode ? galleryProjects.find((project) => project.handle === handle) : undefined;
+  const demoProject = galleryProjects.find((project) => project.handle === handle);
   let creator;
   try { creator = await getCreatorByHandle(handle); } catch { creator = null; }
   if (!creator && demoProject) {
     const initials = demoProject.maker.split(" ").map((part) => part[0]).join("");
     return (
       <main className="profile">
-        <SiteNav />
+        <SiteNav demo />
         <section className="profile-hero shell demo-profile-hero">
           <div className="profile-index">CONCEPT PROFILE / @{demoProject.handle}</div>
           <div className="profile-avatar">{initials}</div>
@@ -44,7 +48,7 @@ export default async function MakerPage({ params }: { params: Promise<{ handle: 
             </article>
           </div>
         </section>
-        <footer className="profile-footer shell"><Link href="/explore">← Explore more makers</Link><small>Concept preview</small></footer>
+        <footer className="profile-footer shell"><Link href="/demo/explore">← Explore more makers</Link><small>Demo gallery</small></footer>
       </main>
     );
   }
