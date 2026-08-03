@@ -11,7 +11,7 @@ export default async function ExplorePage() {
   return (
     <main>
       <SiteNav active="explore" />
-      <section className="projects shell">
+      <section className="projects route-page shell">
         <div className="section-head"><div><span className="section-number">GALLERY / ALL APPROVED</span><h1 className="explore-title">Explore the collection</h1></div></div>
         <PublicGallery projects={projects} />
       </section>

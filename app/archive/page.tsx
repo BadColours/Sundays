@@ -11,7 +11,7 @@ export default async function ArchivePage() {
   return (
     <main>
       <SiteNav active="archive" />
-      <section className="archive-page shell">
+      <section className="archive-page route-page shell">
         <div className="section-head"><div><span className="section-number">ARCHIVE / PUBLISHED</span><h1 className="explore-title">Newest first</h1></div></div>
         {projects.length === 0 ? (
           <div className="archive-empty"><p>No projects have been published yet.</p><Link href="/submit">Submit the first one ↗</Link></div>
