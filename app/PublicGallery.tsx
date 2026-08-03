@@ -9,7 +9,7 @@ export function PublicGallery({ projects, emptyTitle = "Make a page for what you
         <span>OPEN DIRECTORY</span>
         <h2>{emptyTitle}</h2>
         <p>Anyone can create a public maker profile with GitHub. Gallery review applies only to projects submitted for display.</p>
-        <Link className="mvp-button primary" href="/join">Create your profile ↗</Link>
+        <Link className="mvp-button primary" href="/join">Log in</Link>
       </div>
     );
   }

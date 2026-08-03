@@ -18,7 +18,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const creator = await currentCreator();
   const query = await searchParams;
   if (!creator) {
-    return <main><SiteNav /><section className="mvp-page shell"><span className="section-number">CREATOR / DASHBOARD</span><div className="signin-panel"><div><h1>Sign in to manage your projects.</h1><p>GitHub is used only for public creator identity. Sundays never requests repository access.</p></div>{githubAuthConfigured() ? <a className="mvp-button primary" href="/api/auth/github/start?return_to=%2Fdashboard">Continue with GitHub</a> : <Link className="mvp-button" href="/submit?error=github_not_configured">View setup status</Link>}</div></section></main>;
+    return <main><SiteNav /><section className="login-page shell">{githubAuthConfigured() ? <a className="github-login" href="/api/auth/github/start?return_to=%2Fdashboard"><img src="https://github.githubassets.com/favicons/favicon.svg" alt="" />Log in</a> : <Link className="github-login disabled" href="/join"><img src="https://github.githubassets.com/favicons/favicon.svg" alt="" />Log in</Link>}</section></main>;
   }
   let projects: Project[] = [];
   try { projects = await listProjectsForOwner(creator.id); } catch { projects = []; }

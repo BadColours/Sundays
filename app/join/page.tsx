@@ -19,20 +19,14 @@ export default async function JoinPage({ searchParams }: { searchParams: Promise
   return (
     <main>
       <SiteNav />
-      <section className="mvp-page shell">
-        <span className="section-number">JOIN / MAKE A PROFILE</span>
-        <div className="mvp-intro"><h1>Your page.<br />No permission needed.</h1><p>Use your public GitHub identity to make a Sundays profile. It goes live immediately and belongs to you.</p></div>
+      <section className="login-page shell">
         {error && <div className="form-notice error" role="alert">{authErrors[error] ?? error}</div>}
         {creator ? (
-          <div className="signin-panel profile-ready-panel">
-            <div><span className="section-number">PROFILE / LIVE</span><h2>{creator.display_name}</h2><p>@{creator.github_handle} is already part of Sundays. You can share your profile now, whether or not you submit a project to the gallery.</p></div>
-            <div className="join-actions"><Link className="mvp-button primary" href={`/maker/${creator.github_handle}`}>View your profile ↗</Link><Link className="mvp-button" href="/submit">Submit a project</Link></div>
-          </div>
+          <Link className="github-login" href="/dashboard"><img src={creator.avatar_url} alt="" />Continue as @{creator.github_handle}</Link>
         ) : (
-          <div className="signin-panel">
-            <div><h2>Create a public maker profile.</h2><p>We use GitHub only for your public name, handle, avatar, and profile link. Sundays asks for no repository access, hosts no code, and does not review who can join.</p></div>
-            {configured ? <a className="mvp-button primary" href="/api/auth/github/start?return_to=%2Fdashboard">Create profile with GitHub</a> : <span className="mvp-button disabled" aria-disabled="true">GitHub setup required</span>}
-          </div>
+          configured
+            ? <a className="github-login" href="/api/auth/github/start?return_to=%2Fdashboard"><img src="https://github.githubassets.com/favicons/favicon.svg" alt="" />Log in</a>
+            : <span className="github-login disabled" aria-disabled="true" title="GitHub login is not configured yet"><img src="https://github.githubassets.com/favicons/favicon.svg" alt="" />Log in</span>
         )}
       </section>
     </main>

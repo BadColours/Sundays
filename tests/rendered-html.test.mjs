@@ -10,7 +10,7 @@ test("anonymous gallery uses approved records while creator profiles stay open",
   assert.match(page, /listApprovedProjects\(6\)/);
   assert.match(gallery, /OPEN DIRECTORY/);
   assert.match(gallery, /Anyone can create a public maker profile/i);
-  assert.match(gallery, /Create your profile/);
+  assert.match(gallery, /Log in/);
   assert.doesNotMatch(page + gallery, /Maya Chen|Theo Hart|001—056|Submit from GitHub/);
 });
 
@@ -18,7 +18,7 @@ test("submission page explains identity-only GitHub access", async () => {
   const page = await readFile(new URL("../app/submit/page.tsx", import.meta.url), "utf8");
   assert.match(page, /request no repository access/i);
   assert.match(page, /never ingest or deploy code/i);
-  assert.match(page, /GitHub setup required/);
+  assert.match(page, /Login unavailable/);
   assert.match(page, /\/api\/auth\/github\/start/);
 });
 

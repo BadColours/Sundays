@@ -15,7 +15,7 @@ export default async function Home() {
         <div className="section-head"><div><span className="section-number">GALLERY / CURRENT</span><h1 className="explore-title">Selected work</h1></div><p>Personal software made after hours.<br />Hosted and controlled by its creators.</p></div>
         <PublicGallery projects={projects} />
       </section>
-      <footer className="footer shell"><Link className="wordmark" href="/">sundays<span>.</span><small>offhours</small></Link><Link className="footer-submit" href="/join">Create your profile ↗</Link><small>© 2026</small></footer>
+      <footer className="footer shell"><Link className="wordmark" href="/">sundays<span>.</span><small>offhours</small></Link><Link className="footer-submit" href="/join">Log in</Link><small>© 2026</small></footer>
     </main>
   );
 }

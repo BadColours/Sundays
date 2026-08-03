@@ -26,7 +26,7 @@ export default async function SubmitPage({ searchParams }: { searchParams: Promi
         {!creator ? (
           <div className="signin-panel">
             <div><h2>Create your profile first.</h2><p>One GitHub sign-in makes your public maker page immediately. We request no repository access and never ingest or deploy code.</p></div>
-            {configured ? <a className="mvp-button primary" href={`/api/auth/github/start?return_to=${encodeURIComponent(returnTo || "/submit")}`}>Create profile with GitHub</a> : <span className="mvp-button disabled" aria-disabled="true">GitHub setup required</span>}
+            {configured ? <a className="mvp-button primary" href={`/api/auth/github/start?return_to=${encodeURIComponent(returnTo || "/submit")}`}>Log in</a> : <span className="mvp-button disabled" aria-disabled="true">Login unavailable</span>}
           </div>
         ) : (
           <form className="submission-form" action="/api/projects" method="post">
