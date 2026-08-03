@@ -63,20 +63,28 @@ export function ProjectPreview({ type }: { type: string }) {
   );
   if (type === "navigation") return (
     <div className="app-screen wayfinder-screen" aria-hidden="true">
-      <div className="wayfinder-map">
-        <div className="wayfinder-water"><span>EAST RIVER</span></div>
-        <div className="wayfinder-park"><span>Commodore<br />Barry Park</span></div>
-        <i className="way-street horizontal h1" /><i className="way-street horizontal h2" /><i className="way-street horizontal h3" /><i className="way-street horizontal h4" />
-        <i className="way-street vertical v1" /><i className="way-street vertical v2" /><i className="way-street vertical v3" /><i className="way-street vertical v4" />
-        <small className="way-label label-a">FLUSHING AVE</small><small className="way-label label-b">PARK AVE</small><small className="way-label label-c">NAVY ST</small><small className="way-label label-d">GOLD ST</small>
-        <div className="way-route route-one" /><div className="way-route route-two" /><div className="way-route route-three" /><div className="way-route route-four" /><div className="way-route route-five" />
-        <span className="way-user">➤</span><span className="way-destination"><b>●</b></span>
+      <div className="wayfinder-map sf-map">
+        <div className="sf-water"><span>SAN FRANCISCO BAY</span></div>
+        <div className="sf-park"><span>RINCON HILL<br />DOG PARK</span></div>
+        <div className="sf-buildings"><i /><i /><i /><i /><i /><i /><i /><i /><i /><i /><i /><i /></div>
+        <i className="sf-street market" /><i className="sf-street mission" /><i className="sf-street folsom" /><i className="sf-street harrison" />
+        <i className="sf-street beale" /><i className="sf-street main" /><i className="sf-street spear" /><i className="sf-street first" />
+        <i className="sf-street bryant" /><i className="sf-street embarcadero" />
+        <i className="sf-highway bridge" /><i className="sf-highway ramp-one" /><i className="sf-highway ramp-two" />
+        <i className="sf-pier pier-26" /><i className="sf-pier pier-28" /><i className="sf-pier pier-30" />
+        <small className="sf-label folsom-label">FOLSOM ST</small><small className="sf-label harrison-label">HARRISON ST</small>
+        <small className="sf-label beale-label">BEALE ST</small><small className="sf-label main-label">MAIN ST</small>
+        <small className="sf-label spear-label">SPEAR ST</small><small className="sf-label embarcadero-label">THE EMBARCADERO</small>
+        <small className="sf-district soma">RINCON HILL</small><small className="sf-district pier-label">PIER 28</small>
+        <div className="sf-route folsom-route" /><div className="sf-route beale-route" /><div className="sf-route embarcadero-route" />
+        <i className="sf-route-node n1" /><i className="sf-route-node n2" /><i className="sf-route-node n3" />
+        <span className="way-user sf-user">➤</span><span className="way-destination sf-destination"><b>●</b></span>
       </div>
-      <div className="wayfinder-brand"><b>bearings</b><span>Brooklyn, NY</span></div>
-      <div className="wayfinder-search"><span>⌕</span><b>Vinegar Hill</b><i>⌘ K</i></div>
-      <div className="wayfinder-weather"><span>17:42</span><b>62°</b><small>light rain</small></div>
-      <div className="wayfinder-guidance"><div className="way-turn">↱</div><div><small>THEN, IN 350 FT</small><strong>Turn right on Park Ave</strong><span>Continue for 0.3 mi</span></div></div>
-      <div className="wayfinder-status"><span><b>11</b> min</span><span><b>0.8</b> mi</span><span><b>5:53</b> arrival</span><strong>•••</strong></div>
+      <div className="wayfinder-brand"><b>bearings</b><span>San Francisco, CA</span></div>
+      <div className="wayfinder-search"><span>⌕</span><b>Pier 28</b><i>⌘ K</i></div>
+      <div className="wayfinder-weather"><span>17:42</span><b>58°</b><small>west wind</small></div>
+      <div className="wayfinder-guidance"><div className="way-turn">↱</div><div><small>THEN, IN 600 FT</small><strong>Turn right on Beale Street</strong><span>Continue toward the Embarcadero</span></div></div>
+      <div className="wayfinder-status"><span><b>9</b> min</span><span><b>0.7</b> mi</span><span><b>5:51</b> arrival</span><strong>•••</strong></div>
     </div>
   );
   if (type === "sundial") return (

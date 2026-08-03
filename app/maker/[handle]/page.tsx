@@ -1,56 +1,47 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ProjectPreview } from "../../ProjectPreview";
+import { getCreatorByHandle, listPublishedProjectsForCreator } from "../../../db/repository";
+import { ProjectThumbnail } from "../../ProjectThumbnail";
 import { SiteNav } from "../../SiteNav";
-import { mockMakerMap, type MockMaker } from "../../galleryData";
 
-const makers: Record<string, MockMaker> = {
-  mayachen: { name: "Maya Chen", bio: "Designer-engineer making small tools for slower, more deliberate days.", location: "Brooklyn, NY", projects: [{ name: "Altitude", type: "flight" }, { name: "Index Zero", type: "leaf" }, { name: "Weather Window", type: "radio" }], accent: "#2947ff" },
-  theohart: { name: "Theo Hart", bio: "Independent developer interested in local-first software and quiet interfaces.", location: "London, UK", projects: [{ name: "Touchline", type: "soccer" }, { name: "Commonplace", type: "index" }], accent: "#ff5b55" },
-  noorahmed: { name: "Noor Ahmed", bio: "Creative technologist building gardens for the strange corners of the internet.", location: "Toronto, CA", projects: [{ name: "Bearings", type: "navigation" }, { name: "Sideways", type: "sundial" }], accent: "#35d456" },
-  elimorgan: { name: "Eli Morgan", bio: "Sound designer and developer exploring playful ways to listen.", location: "Portland, OR", projects: [{ name: "Radio Silence", type: "radio" }, { name: "Hush", type: "hush" }], accent: "#111111" },
-  anikabose: { name: "Anika Bose", bio: "Designer and developer building personal archives for recurring ideas.", location: "Mumbai, IN", projects: [{ name: "Commonplace", type: "index" }], accent: "#7e22ce" },
-  jonbell: { name: "Jon Bell", bio: "Independent coder making small tools for quieter spaces.", location: "Chicago, IL", projects: [{ name: "Hush", type: "hush" }], accent: "#35d456" },
-};
+export const dynamic = "force-dynamic";
 
-export function generateStaticParams() {
-  return [...Object.keys(makers), ...Object.keys(mockMakerMap)].map((handle) => ({ handle }));
+export async function generateMetadata({ params }: { params: Promise<{ handle: string }> }): Promise<Metadata> {
+  const { handle } = await params;
+  try {
+    const creator = await getCreatorByHandle(handle);
+    if (!creator) return { title: "Maker not found — sundays" };
+    return { title: `${creator.display_name} (@${creator.github_handle}) — sundays`, description: `Published projects by ${creator.display_name} on Sundays.` };
+  } catch { return { title: "Maker — sundays" }; }
 }
 
 export default async function MakerPage({ params }: { params: Promise<{ handle: string }> }) {
   const { handle } = await params;
-  const maker = makers[handle] ?? mockMakerMap[handle];
-  if (!maker) notFound();
-
+  let creator;
+  try { creator = await getCreatorByHandle(handle); } catch { creator = null; }
+  if (!creator) notFound();
+  const projects = await listPublishedProjectsForCreator(creator.id);
   return (
-    <main className="profile" style={{ "--profile-accent": maker.accent } as React.CSSProperties}>
+    <main className="profile">
       <SiteNav />
-      <section className="profile-hero shell">
-        <div className="profile-index">MAKER / @{handle}</div>
-        <div className="profile-avatar">{maker.name.split(" ").map((part) => part[0]).join("")}</div>
-        <div className="profile-title"><h1>{maker.name}</h1><p>{maker.bio}</p></div>
-        <div className="profile-facts"><span>Based in</span><strong>{maker.location}</strong><span>Making since</span><strong>2023</strong></div>
+      <section className="profile-hero shell mvp-profile-hero">
+        <div className="profile-index">MAKER / @{creator.github_handle}</div>
+        <img className="github-avatar-large" src={creator.avatar_url} alt="" />
+        <div className="profile-title"><h1>{creator.display_name}</h1><a className="text-link" href={creator.github_profile_url} target="_blank" rel="noopener noreferrer">GitHub profile ↗</a></div>
       </section>
       <section className="profile-work shell">
-        <div className="profile-projects">
-          {maker.projects.map((project, index) => (
-            <a href="https://github.com" target="_blank" rel="noreferrer" className="profile-project-card" key={project.name}>
-              <div className={`profile-thumb${project.thumbnail ? " creator-image-frame" : ""}`}>
-                {project.thumbnail ? (
-                  <img className="creator-preview" src={project.thumbnail} alt={`Preview of ${project.name}`} />
-                ) : (
-                  <>
-                    <div className="browser-chrome"><span /><span /><span /><b>{project.name.toLowerCase()}.app</b></div>
-                    <ProjectPreview type={project.type} />
-                  </>
-                )}
-              </div>
-              <div className="profile-project-caption"><span>0{index + 1}</span><strong>{project.name}</strong><small>{index === 0 ? "Featured project" : "Open source experiment"}</small><b>GitHub ↗</b></div>
-            </a>
+        <div className="profile-projects mvp-profile-projects">
+          {projects.map((project) => (
+            <article className="profile-project-card" key={project.id}>
+              <a className="profile-thumb creator-image-frame" href={project.live_url} target="_blank" rel="noopener noreferrer"><ProjectThumbnail project={project} /></a>
+              <div className="profile-project-caption"><strong><Link href={`/project/${project.slug}`}>{project.title}</Link></strong><small>{project.short_description}</small><a href={project.live_url} target="_blank" rel="noopener noreferrer">Launch project ↗</a></div>
+            </article>
           ))}
+          {projects.length === 0 && <p>No published projects yet.</p>}
         </div>
       </section>
-      <footer className="profile-footer shell"><Link href="/">← Explore more makers</Link><small>© 2026 sundays · offhours</small></footer>
+      <footer className="profile-footer shell"><Link href="/explore">← Explore more makers</Link><small>© 2026 sundays · offhours</small></footer>
     </main>
   );
 }

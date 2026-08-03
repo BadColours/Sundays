@@ -9,10 +9,10 @@ export async function generateMetadata(): Promise<Metadata> {
   const protocol = requestHeaders.get("x-forwarded-proto") ?? (host.includes("localhost") ? "http" : "https");
   const origin = `${protocol}://${host}`;
   return {
-    title: "sundays — Beautifully vibe-coded apps",
-    description: "A gallery for the little apps that became something worth showing.",
-    openGraph: { title: "sundays — Made after work. Shared with the world.", description: "A gallery for beautifully vibe-coded apps, made in the offhours.", type: "website", images: [{ url: `${origin}/og.png`, width: 1200, height: 630, alt: "sundays. offhours" }] },
-    twitter: { card: "summary_large_image", title: "sundays — Made after work. Shared with the world.", description: "A gallery for beautifully vibe-coded apps, made in the offhours.", images: [`${origin}/og.png`] },
+    title: "sundays — Personal software made after hours",
+    description: "A curated gallery of independent applications, hosted and controlled by their creators.",
+    openGraph: { title: "sundays — Personal software made after hours", description: "A curated gallery of independent applications, hosted and controlled by their creators.", type: "website", images: [{ url: `${origin}/og.png`, width: 1200, height: 630, alt: "sundays. offhours" }] },
+    twitter: { card: "summary_large_image", title: "sundays — Personal software made after hours", description: "A curated gallery of independent applications, hosted and controlled by their creators.", images: [`${origin}/og.png`] },
   };
 }
 

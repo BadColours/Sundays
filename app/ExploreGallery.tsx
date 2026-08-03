@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { ProjectPreview } from "./ProjectPreview";
-import { galleryProjects } from "./galleryData";
+import { galleryProjects } from "./fixtures/demoGallery";
 
 const types = ["All", "Navigation", "Audio", "Tools"] as const;
 const exploreCatalogue = galleryProjects.slice(6).filter((project) => project.type !== "Games");
@@ -29,10 +29,6 @@ export function ExploreGallery({ featuredOnly = false }: { featuredOnly?: boolea
     setExploreProjects((projects) => shuffleProjects(projects));
     setVisibleCount(10);
   };
-
-  useEffect(() => {
-    setExploreProjects((projects) => shuffleProjects(projects));
-  }, []);
 
   const sourceProjects = featuredOnly ? galleryProjects.slice(0, 6) : exploreProjects;
   const allVisibleProjects = activeType === "All"
@@ -63,8 +59,13 @@ export function ExploreGallery({ featuredOnly = false }: { featuredOnly?: boolea
       <div className="project-grid">
         {shownProjects.map((project) => (
           <article className="project-card" key={project.title}>
-            <Link className={`preview-frame ${project.color}${project.thumbnail ? " creator-image-frame" : ""}`} href={`/maker/${project.handle}`} aria-label={`View ${project.title} by ${project.maker}`}>
-              {project.thumbnail ? (
+            <Link className={`preview-frame ${project.color}${project.thumbnail && !featuredOnly ? " creator-image-frame" : ""}`} href={`/maker/${project.handle}`} aria-label={`View ${project.title} by ${project.maker}`}>
+              {project.thumbnail && featuredOnly ? (
+                <>
+                  <div className="browser-chrome"><span /><span /><span /><b>{project.title.toLowerCase()}.app</b></div>
+                  <img className="creator-preview editorial-preview" src={project.thumbnail} alt={`Preview of ${project.title}`} />
+                </>
+              ) : project.thumbnail ? (
                 <img className="creator-preview" src={project.thumbnail} alt={`Preview of ${project.title}`} />
               ) : (
                 <>
@@ -74,8 +75,8 @@ export function ExploreGallery({ featuredOnly = false }: { featuredOnly?: boolea
               )}
               <span className="open-pill">Open project <Arrow /></span>
             </Link>
-            <div className="project-meta">
-              <span className="project-number">{project.number}</span>
+            <div className={`project-meta${featuredOnly ? "" : " without-number"}`}>
+              {featuredOnly && <span className="project-number">{project.number}</span>}
               <div><h3><Link href={`/maker/${project.handle}`}>{project.title}</Link></h3><p>{project.description}</p></div>
               <div className="project-side"><Link href={`/maker/${project.handle}`}>by {project.maker}</Link><span>{project.tags.join(" · ")}</span></div>
             </div>

@@ -1,6 +1,8 @@
 import Link from "next/link";
+import { currentCreator, isAdmin } from "../lib/auth";
 
-export function SiteNav({ active }: { active?: "explore" | "archive" | "about" }) {
+export async function SiteNav({ active }: { active?: "explore" | "archive" | "about" }) {
+  const creator = await currentCreator();
   return (
     <nav className="nav shell" aria-label="Primary navigation">
       <Link className="wordmark" href="/">sundays<span>.</span><small>offhours</small></Link>
@@ -9,7 +11,14 @@ export function SiteNav({ active }: { active?: "explore" | "archive" | "about" }
         <Link className={active === "archive" ? "active" : ""} href="/archive">Archive</Link>
         <Link className={active === "about" ? "active" : ""} href="/about">About</Link>
       </div>
-      <a className="github-button" href="https://github.com" target="_blank" rel="noreferrer">Continue with GitHub</a>
+      <div className="nav-account">
+        {creator ? (
+          <>
+            {isAdmin(creator) && <Link href="/admin">Review</Link>}
+            <Link className="github-button" href="/dashboard">@{creator.github_handle}</Link>
+          </>
+        ) : <Link className="github-button" href="/submit">Submit a project</Link>}
+      </div>
     </nav>
   );
 }
