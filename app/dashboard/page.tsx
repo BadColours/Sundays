@@ -26,8 +26,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     <main>
       <SiteNav />
       <section className="mvp-page dashboard-page shell">
-        <div className="dashboard-heading"><div><span className="section-number">CREATOR / @{creator.github_handle}</span><h1>Your projects</h1></div><Link className="mvp-button primary" href="/submit">Submit another ↗</Link></div>
-        {query.submitted && <div className="form-notice success" role="status"><b>Your project is in review.</b> We’ll check the live experience before publishing it. Nothing will go live until it is approved.</div>}
+        <div className="dashboard-heading"><div><span className="section-number">CREATOR / @{creator.github_handle}</span><h1>Your projects</h1><p className="profile-live-note">Your maker profile is live now. <Link href={`/maker/${creator.github_handle}`}>View public profile ↗</Link></p></div><Link className="mvp-button primary" href="/submit">Submit another ↗</Link></div>
+        {query.submitted && <div className="form-notice success" role="status"><b>Your project is in review for the gallery.</b> Your maker profile is already public.</div>}
         {query.updated && <div className="form-notice success" role="status">Your project has been updated.</div>}
         {query.error && <div className="form-notice error" role="alert">{query.error}</div>}
         {projects.length === 0 ? <div className="dashboard-empty"><p>You have not submitted a project yet.</p><Link href="/submit">Submit a project ↗</Link></div> : (

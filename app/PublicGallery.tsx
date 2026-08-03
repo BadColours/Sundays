@@ -2,14 +2,14 @@ import Link from "next/link";
 import type { Project } from "../db/repository";
 import { ProjectThumbnail } from "./ProjectThumbnail";
 
-export function PublicGallery({ projects, emptyTitle = "The first Sundays are still being collected." }: { projects: Project[]; emptyTitle?: string }) {
+export function PublicGallery({ projects, emptyTitle = "Make a page for what you make after hours." }: { projects: Project[]; emptyTitle?: string }) {
   if (projects.length === 0) {
     return (
       <div className="collection-empty">
-        <span>EARLY COLLECTION</span>
+        <span>OPEN DIRECTORY</span>
         <h2>{emptyTitle}</h2>
-        <p>Sundays is inviting a small first group of creators making personal software after hours.</p>
-        <Link className="mvp-button primary" href="/submit">Submit a project ↗</Link>
+        <p>Anyone can create a public maker profile with GitHub. Gallery review applies only to projects submitted for display.</p>
+        <Link className="mvp-button primary" href="/join">Create your profile ↗</Link>
       </div>
     );
   }

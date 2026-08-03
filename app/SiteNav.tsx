@@ -17,7 +17,7 @@ export async function SiteNav({ active }: { active?: "explore" | "archive" | "ab
             {isAdmin(creator) && <Link href="/admin">Review</Link>}
             <Link className="github-button" href="/dashboard">@{creator.github_handle}</Link>
           </>
-        ) : <Link className="github-button" href="/submit">Submit a project</Link>}
+        ) : <Link className="github-button" href="/join">Create profile</Link>}
       </div>
     </nav>
   );

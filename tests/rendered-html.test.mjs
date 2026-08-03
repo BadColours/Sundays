@@ -2,15 +2,15 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-test("anonymous gallery uses approved database records and an honest cold-start state", async () => {
+test("anonymous gallery uses approved records while creator profiles stay open", async () => {
   const [page, gallery] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/PublicGallery.tsx", import.meta.url), "utf8"),
   ]);
   assert.match(page, /listApprovedProjects\(6\)/);
-  assert.match(gallery, /EARLY COLLECTION/);
-  assert.match(gallery, /first Sundays are still being collected/i);
-  assert.match(gallery, /Submit a project/);
+  assert.match(gallery, /OPEN DIRECTORY/);
+  assert.match(gallery, /Anyone can create a public maker profile/i);
+  assert.match(gallery, /Create your profile/);
   assert.doesNotMatch(page + gallery, /Maya Chen|Theo Hart|001—056|Submit from GitHub/);
 });
 

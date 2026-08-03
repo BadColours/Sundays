@@ -38,7 +38,7 @@ export default async function MakerPage({ params }: { params: Promise<{ handle: 
               <div className="profile-project-caption"><strong><Link href={`/project/${project.slug}`}>{project.title}</Link></strong><small>{project.short_description}</small><a href={project.live_url} target="_blank" rel="noopener noreferrer">Launch project ↗</a></div>
             </article>
           ))}
-          {projects.length === 0 && <p>No published projects yet.</p>}
+          {projects.length === 0 && <div className="profile-no-projects"><span>PUBLIC PROFILE</span><p>{creator.display_name} has not added a project to the gallery yet.</p></div>}
         </div>
       </section>
       <footer className="profile-footer shell"><Link href="/explore">← Explore more makers</Link><small>© 2026 sundays · offhours</small></footer>
