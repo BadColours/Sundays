@@ -18,7 +18,6 @@ export default function DemoHomePage() {
       </section>
       <footer className="footer shell">
         <Link className="wordmark" href="/demo">sundays<span>.</span><small>offhours</small></Link>
-        <Link className="footer-submit" href="/demo/explore">Explore all demos</Link>
         <small>Demo</small>
       </footer>
     </main>
