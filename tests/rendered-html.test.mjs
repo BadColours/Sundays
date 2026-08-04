@@ -48,6 +48,9 @@ test("dashboard lists public GitHub repositories without private repository acce
   assert.match(dashboard, /PreviewStatusRefresh/);
   assert.match(dashboard, /Preview: capturing/);
   assert.match(dashboard, /Retry preview/);
+  assert.match(dashboard, /Submit to Explore/);
+  assert.match(updateRoute, /submit_gallery/);
+  assert.match(updateRoute, /submitOwnedProjectToGallery/);
   assert.doesNotMatch(dashboard, />Capture preview</);
   assert.match(createRoute, /waitUntil\(captureProjectThumbnail/);
   assert.doesNotMatch(createRoute, /await captureProjectThumbnail/);

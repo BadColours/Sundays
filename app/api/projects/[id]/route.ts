@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { waitUntil } from "cloudflare:workers";
-import { getOwnedProject, queueThumbnail, showOwnedProjectOnProfile, updateOwnedProject, withdrawOwnedProject } from "../../../../db/repository";
+import { getOwnedProject, queueThumbnail, showOwnedProjectOnProfile, submitOwnedProjectToGallery, updateOwnedProject, withdrawOwnedProject } from "../../../../db/repository";
 import { currentCreator } from "../../../../lib/auth";
 import { verifyProjectFields, formErrorUrl } from "../../../../lib/project-input";
 import { captureProjectThumbnail } from "../../../../lib/thumbnails";
@@ -19,6 +19,11 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     if (action === "show_profile") {
       await showOwnedProjectOnProfile(id, creator.id);
       return NextResponse.redirect(new URL("/dashboard?updated=profile", request.url), 303);
+    }
+    if (action === "submit_gallery") {
+      const submitted = await submitOwnedProjectToGallery(id, creator.id);
+      if (!submitted) return new NextResponse("Not found", { status: 404 });
+      return NextResponse.redirect(new URL("/dashboard?updated=gallery", request.url), 303);
     }
     const input = await verifyProjectFields(form, creator.github_handle);
     const existing = await getOwnedProject(id, creator.id);

@@ -327,6 +327,15 @@ export async function showOwnedProjectOnProfile(id: string, creatorId: string) {
     .bind(new Date().toISOString(), id, creatorId).run();
 }
 
+export async function submitOwnedProjectToGallery(id: string, creatorId: string) {
+  await ensureSchema();
+  const project = await getOwnedProject(id, creatorId);
+  if (!project || project.profile_status !== "visible" || !["draft", "declined"].includes(project.moderation_status)) return false;
+  await database().prepare("UPDATE projects SET moderation_status = 'submitted', moderation_note = NULL, updated_at = ? WHERE id = ? AND creator_id = ?")
+    .bind(new Date().toISOString(), id, creatorId).run();
+  return true;
+}
+
 export async function setThumbnailState(id: string, status: ThumbnailStatus, key: string | null, error: string | null) {
   await ensureSchema();
   await database().prepare("UPDATE projects SET thumbnail_status = ?, thumbnail_storage_key = ?, thumbnail_error = ?, updated_at = ? WHERE id = ?")

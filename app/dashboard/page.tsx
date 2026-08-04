@@ -36,7 +36,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       <section className="mvp-page dashboard-page shell">
         <div className="dashboard-heading"><div><span className="section-number">CREATOR / @{creator.github_handle}</span><h1>Your projects</h1><p className="profile-live-note">Your maker profile is live now. <Link href={`/maker/${creator.github_handle}`}>View public profile ↗</Link></p></div><Link className="mvp-button primary" href="/submit">Add something else ↗</Link></div>
         {query.submitted && <div className="form-notice success" role="status"><b>Your project is live on your profile.</b> It is also in review for the gallery.</div>}
-        {query.updated && <div className="form-notice success" role="status">{query.updated === "withdrawn" ? "The project is now hidden from your profile and withdrawn from gallery review." : query.updated === "profile" ? "The project is live on your profile." : "Your project has been updated."}</div>}
+        {query.updated && <div className="form-notice success" role="status">{query.updated === "withdrawn" ? "The project is now hidden from your profile and withdrawn from Explore review." : query.updated === "profile" ? "The project is live on your profile." : query.updated === "gallery" ? "Your project has been submitted to Explore." : "Your project has been updated."}</div>}
         {query.error && <div className="form-notice error" role="alert">{query.error}</div>}
         <section className="repository-picker" aria-labelledby="public-repositories-heading">
           <div className="repository-picker-heading"><div><span className="section-number">PUBLIC ON GITHUB</span><h2 id="public-repositories-heading">Choose what to share.</h2></div><span>{repositories.length} repositories</span></div>
@@ -74,6 +74,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                 </form>
                 <div className="secondary-actions">
                   {project.thumbnail_status === "failed" && <form action={`/api/projects/${project.id}/recapture`} method="post"><button type="submit">Retry preview</button></form>}
+                  {(project.moderation_status === "draft" || project.moderation_status === "declined") && project.profile_status === "visible" && <form action={`/api/projects/${project.id}`} method="post"><input type="hidden" name="action" value="submit_gallery" /><button type="submit">Submit to Explore</button></form>}
                   {project.profile_status === "visible" ? <form action={`/api/projects/${project.id}`} method="post"><input type="hidden" name="action" value="withdraw" /><button className="danger-link" type="submit">Hide from profile</button></form> : <form action={`/api/projects/${project.id}`} method="post"><input type="hidden" name="action" value="show_profile" /><button type="submit">Share on profile</button></form>}
                 </div>
               </article>
