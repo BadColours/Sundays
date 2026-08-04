@@ -44,7 +44,7 @@ For a custom capture provider, Sundays sends an authenticated `POST` with:
 }
 ```
 
-The provider must return raw `image/webp`, `image/png`, or `image/jpeg` bytes, enforce private-network blocking independently, and complete within 50 seconds. `SCREENSHOT_API_TOKEN` is sent as a bearer token when present. Capture failures never prevent profile sharing; the dashboard offers a retry.
+The provider must return raw `image/webp`, `image/png`, or `image/jpeg` bytes, enforce private-network blocking independently, and complete within 50 seconds. `SCREENSHOT_API_TOKEN` is sent as a bearer token when present. New and updated project URLs are captured in the background, and the dashboard refreshes while a preview is processing. Capture failures never prevent profile sharing; the dashboard offers a retry only when automatic capture fails.
 
 ## Production setup checklist
 

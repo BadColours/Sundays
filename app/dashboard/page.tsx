@@ -3,6 +3,7 @@ import { listProjectsForOwner, type Project } from "../../db/repository";
 import { currentCreator, githubAuthConfigured } from "../../lib/auth";
 import { listPublicGitHubRepositories, type PublicGitHubRepository } from "../../lib/github-public";
 import { ProjectThumbnail } from "../ProjectThumbnail";
+import { PreviewStatusRefresh } from "../PreviewStatusRefresh";
 import { SiteNav } from "../SiteNav";
 
 export const dynamic = "force-dynamic";
@@ -27,8 +28,10 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   try { projects = await listProjectsForOwner(creator.id); } catch { projects = []; }
   try { repositories = await listPublicGitHubRepositories(creator.github_handle); } catch (error) { repositoryError = error instanceof Error ? error.message : "GitHub could not load your public repositories right now."; }
   const sharedRepositories = new Set(projects.map((project) => project.repository_url?.replace(/\/$/, "").toLowerCase()).filter(Boolean));
+  const previewsAreProcessing = projects.some((project) => project.thumbnail_status === "pending");
   return (
     <main>
+      <PreviewStatusRefresh active={previewsAreProcessing} />
       <SiteNav />
       <section className="mvp-page dashboard-page shell">
         <div className="dashboard-heading"><div><span className="section-number">CREATOR / @{creator.github_handle}</span><h1>Your projects</h1><p className="profile-live-note">Your maker profile is live now. <Link href={`/maker/${creator.github_handle}`}>View public profile ↗</Link></p></div><Link className="mvp-button primary" href="/submit">Add something else ↗</Link></div>
@@ -59,7 +62,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
             {projects.map((project) => (
               <article className="dashboard-card" key={project.id}>
                 <div className="dashboard-thumb"><ProjectThumbnail project={project} /></div>
-                <div className="dashboard-card-head"><div><span className={`status-chip profile-${project.profile_status}`}>{project.profile_status === "visible" ? "Live on profile" : "Hidden from profile"}</span><span className={`status-chip status-${project.moderation_status}`}>{galleryStatusCopy(project)}</span><span className={`status-chip thumbnail-${project.thumbnail_status}`}>{project.thumbnail_status === "ready" ? "Preview: captured" : "Preview: needs capture"}</span><span className={`status-chip verification-${project.verification_status}`}>{project.verification_status === "verified" ? "Maker verified" : "Unverified"}</span><span className={`status-chip link-${project.last_check_status}`}>Link: {project.last_check_status}</span></div><small>Shared {new Date(project.created_at).toLocaleDateString()}</small></div>
+                <div className="dashboard-card-head"><div><span className={`status-chip profile-${project.profile_status}`}>{project.profile_status === "visible" ? "Live on profile" : "Hidden from profile"}</span><span className={`status-chip status-${project.moderation_status}`}>{galleryStatusCopy(project)}</span><span className={`status-chip thumbnail-${project.thumbnail_status}`}>{project.thumbnail_status === "ready" ? "Preview: captured" : project.thumbnail_status === "pending" ? "Preview: capturing" : "Preview: retry needed"}</span><span className={`status-chip verification-${project.verification_status}`}>{project.verification_status === "verified" ? "Maker verified" : "Unverified"}</span><span className={`status-chip link-${project.last_check_status}`}>Link: {project.last_check_status}</span></div><small>Shared {new Date(project.created_at).toLocaleDateString()}</small></div>
                 <form className="dashboard-edit-form" action={`/api/projects/${project.id}`} method="post">
                   <input type="hidden" name="action" value="update" />
                   <label>Title<input name="title" defaultValue={project.title} minLength={2} maxLength={80} required /></label>
@@ -70,7 +73,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                   <div className="form-actions"><button type="submit">Save changes</button>{project.moderation_status === "approved" && <Link href={`/project/${project.slug}`}>View project page</Link>}</div>
                 </form>
                 <div className="secondary-actions">
-                  {project.thumbnail_status !== "ready" && <form action={`/api/projects/${project.id}/recapture`} method="post"><button type="submit">Capture preview</button></form>}
+                  {project.thumbnail_status === "failed" && <form action={`/api/projects/${project.id}/recapture`} method="post"><button type="submit">Retry preview</button></form>}
                   {project.profile_status === "visible" ? <form action={`/api/projects/${project.id}`} method="post"><input type="hidden" name="action" value="withdraw" /><button className="danger-link" type="submit">Hide from profile</button></form> : <form action={`/api/projects/${project.id}`} method="post"><input type="hidden" name="action" value="show_profile" /><button type="submit">Share on profile</button></form>}
                 </div>
               </article>

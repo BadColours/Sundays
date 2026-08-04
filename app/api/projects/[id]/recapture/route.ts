@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { waitUntil } from "cloudflare:workers";
 import { getOwnedProject, queueThumbnail } from "../../../../../db/repository";
 import { currentCreator } from "../../../../../lib/auth";
 import { captureProjectThumbnail } from "../../../../../lib/thumbnails";
@@ -10,6 +11,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   const project = await getOwnedProject(id, creator.id);
   if (!project) return new NextResponse("Not found", { status: 404 });
   await queueThumbnail(id);
-  await captureProjectThumbnail(id);
+  waitUntil(captureProjectThumbnail(id));
   return NextResponse.redirect(new URL("/dashboard?updated=thumbnail", request.url), 303);
 }

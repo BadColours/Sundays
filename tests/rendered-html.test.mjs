@@ -35,15 +35,25 @@ test("submission page explains identity-only GitHub access", async () => {
 });
 
 test("dashboard lists public GitHub repositories without private repository access", async () => {
-  const [dashboard, thumbnail, github] = await Promise.all([
+  const [dashboard, thumbnail, github, createRoute, updateRoute] = await Promise.all([
     readFile(new URL("../app/dashboard/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/ProjectThumbnail.tsx", import.meta.url), "utf8"),
     readFile(new URL("../lib/github-public.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/projects/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/projects/[id]/route.ts", import.meta.url), "utf8"),
   ]);
   assert.match(dashboard, /Choose what to share/);
   assert.match(dashboard, /Share ↗/);
   assert.match(dashboard, /Add something else/);
-  assert.match(dashboard, /Capture preview/);
+  assert.match(dashboard, /PreviewStatusRefresh/);
+  assert.match(dashboard, /Preview: capturing/);
+  assert.match(dashboard, /Retry preview/);
+  assert.doesNotMatch(dashboard, />Capture preview</);
+  assert.match(createRoute, /waitUntil\(captureProjectThumbnail/);
+  assert.doesNotMatch(createRoute, /await captureProjectThumbnail/);
+  assert.match(updateRoute, /existing\.live_url !== input\.liveUrl/);
+  assert.match(updateRoute, /existing\.thumbnail_status !== "ready"/);
+  assert.match(updateRoute, /queueThumbnail/);
   assert.doesNotMatch(thumbnail, /iframe|liveFallback/);
   assert.match(github, /api\.github\.com\/users/);
   assert.match(github, /type.*owner/);
