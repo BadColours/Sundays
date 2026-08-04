@@ -10,9 +10,8 @@ test("anonymous gallery uses approved records while creator profiles stay open",
     readFile(new URL("../db/repository.ts", import.meta.url), "utf8"),
   ]);
   assert.match(page, /listApprovedProjects\(6\)/);
-  assert.match(gallery, /OPEN DIRECTORY/);
-  assert.match(gallery, /Anyone can create a public maker profile/i);
-  assert.match(gallery, /Log in/);
+  assert.match(gallery, /if \(projects\.length === 0\) return null/);
+  assert.doesNotMatch(gallery, /OPEN DIRECTORY|Log in|Anyone can create a public maker profile/i);
   assert.match(maker, /listVisibleProjectsForCreator/);
   assert.match(repository, /profile_status = 'visible'/);
   assert.match(repository, /moderation_status = 'approved'/);

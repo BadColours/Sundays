@@ -2,17 +2,8 @@ import Link from "next/link";
 import type { Project } from "../db/repository";
 import { ProjectThumbnail } from "./ProjectThumbnail";
 
-export function PublicGallery({ projects, emptyTitle = "Make a page for what you make after hours." }: { projects: Project[]; emptyTitle?: string }) {
-  if (projects.length === 0) {
-    return (
-      <div className="collection-empty">
-        <span>OPEN DIRECTORY</span>
-        <h2>{emptyTitle}</h2>
-        <p>Anyone can create a public maker profile with GitHub. Gallery review applies only to projects submitted for display.</p>
-        <Link className="mvp-button primary" href="/join">Log in</Link>
-      </div>
-    );
-  }
+export function PublicGallery({ projects }: { projects: Project[] }) {
+  if (projects.length === 0) return null;
   return (
     <div className="project-grid public-project-grid">
       {projects.map((project) => (
