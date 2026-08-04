@@ -24,7 +24,7 @@ export default async function SubmitPage({ searchParams }: { searchParams: Promi
     <main>
       <SiteNav />
       <section className="mvp-page shell">
-        <span className="section-number">SUBMIT / A PROJECT</span>
+        <span className="section-number">SHARE / A PROJECT</span>
         <div className="mvp-intro"><h1>Made after hours?<br />Show us.</h1><p>Your profile is yours and goes live when you join. Project review only determines what appears in the gallery.</p></div>
         {error && <div className="form-notice error" role="alert">{authErrors[error] ?? error}</div>}
         {!creator ? (
@@ -39,8 +39,8 @@ export default async function SubmitPage({ searchParams }: { searchParams: Promi
             <label>GitHub repository <small>Optional · personal repositories are verified automatically</small><input name="repository_url" type="url" inputMode="url" defaultValue={prefill(repositoryUrl, 500)} placeholder={`https://github.com/${creator.github_handle}/project`} /></label>
             <label>Project title<input name="title" type="text" defaultValue={prefill(title, 80)} minLength={2} maxLength={80} required /></label>
             <label>Short description<textarea name="description" defaultValue={prefill(description, 240)} minLength={10} maxLength={240} rows={4} required /></label>
-            <p className="permission-copy">By submitting, you confirm the public page is yours to share and grant Sundays permission to capture and display a promotional image of it. A matching personal GitHub repository adds maker verification; it is not required for gallery review.</p>
-            <button className="mvp-button primary" type="submit">Share project ↗</button>
+            <p className="permission-copy">By sharing, you confirm the public page is yours and grant Sundays permission to display a promotional image of it. It appears on your profile immediately. Gallery inclusion is reviewed separately.</p>
+            <button className="mvp-button primary" type="submit">Share on profile ↗</button>
           </form>
         )}
       </section>
