@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { listProjectsForOwner, type Project } from "../../db/repository";
 import { currentCreator, githubAuthConfigured } from "../../lib/auth";
+import { listPublicGitHubRepositories, type PublicGitHubRepository } from "../../lib/github-public";
 import { ProjectThumbnail } from "../ProjectThumbnail";
 import { SiteNav } from "../SiteNav";
 
@@ -21,16 +22,39 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     return <main><SiteNav /><section className="login-page shell">{githubAuthConfigured() ? <a className="github-login" href="/api/auth/github/start?return_to=%2Fdashboard"><img src="https://github.githubassets.com/favicons/favicon.svg" alt="" />Log in</a> : <Link className="github-login disabled" href="/join"><img src="https://github.githubassets.com/favicons/favicon.svg" alt="" />Log in</Link>}</section></main>;
   }
   let projects: Project[] = [];
+  let repositories: PublicGitHubRepository[] = [];
+  let repositoryError = "";
   try { projects = await listProjectsForOwner(creator.id); } catch { projects = []; }
+  try { repositories = await listPublicGitHubRepositories(creator.github_handle); } catch (error) { repositoryError = error instanceof Error ? error.message : "GitHub could not load your public repositories right now."; }
+  const sharedRepositories = new Set(projects.map((project) => project.repository_url?.replace(/\/$/, "").toLowerCase()).filter(Boolean));
   return (
     <main>
       <SiteNav />
       <section className="mvp-page dashboard-page shell">
-        <div className="dashboard-heading"><div><span className="section-number">CREATOR / @{creator.github_handle}</span><h1>Your projects</h1><p className="profile-live-note">Your maker profile is live now. <Link href={`/maker/${creator.github_handle}`}>View public profile ↗</Link></p></div><Link className="mvp-button primary" href="/submit">Submit another ↗</Link></div>
+        <div className="dashboard-heading"><div><span className="section-number">CREATOR / @{creator.github_handle}</span><h1>Your projects</h1><p className="profile-live-note">Your maker profile is live now. <Link href={`/maker/${creator.github_handle}`}>View public profile ↗</Link></p></div><Link className="mvp-button primary" href="/submit">Add something else ↗</Link></div>
         {query.submitted && <div className="form-notice success" role="status"><b>Your project is in review for the gallery.</b> Your maker profile is already public.</div>}
         {query.updated && <div className="form-notice success" role="status">Your project has been updated.</div>}
         {query.error && <div className="form-notice error" role="alert">{query.error}</div>}
-        {projects.length === 0 ? <div className="dashboard-empty"><p>You have not submitted a project yet.</p><Link href="/submit">Submit a project ↗</Link></div> : (
+        <section className="repository-picker" aria-labelledby="public-repositories-heading">
+          <div className="repository-picker-heading"><div><span className="section-number">PUBLIC ON GITHUB</span><h2 id="public-repositories-heading">Choose what to share.</h2></div><span>{repositories.length} repositories</span></div>
+          {repositoryError ? <div className="form-notice error" role="status">{repositoryError} <a href="/dashboard">Try again</a></div> : repositories.length === 0 ? <div className="repository-empty">No public repositories found. <Link href="/submit">Add something else ↗</Link></div> : (
+            <div className="repository-list">
+              {repositories.map((repository) => {
+                const alreadyShared = sharedRepositories.has(repository.repositoryUrl.replace(/\/$/, "").toLowerCase());
+                const params = new URLSearchParams({ repository_url: repository.repositoryUrl, title: repository.name });
+                if (repository.description.length >= 10) params.set("description", repository.description.slice(0, 240));
+                if (repository.liveUrl) params.set("live_url", repository.liveUrl);
+                return <article className="repository-row" key={repository.id}>
+                  <div><h3>{repository.name}</h3><p>{repository.description || "No description on GitHub."}</p></div>
+                  <div className="repository-meta">{repository.language && <span>{repository.language}</span>}{repository.isFork && <span>Fork</span>}{repository.isArchived && <span>Archived</span>}<span>Updated {new Date(repository.updatedAt).toLocaleDateString()}</span></div>
+                  {alreadyShared ? <span className="repository-shared">Shared</span> : <Link className="repository-share" href={`/submit?${params.toString()}`}>Share ↗</Link>}
+                </article>;
+              })}
+            </div>
+          )}
+        </section>
+        <div className="dashboard-section-heading"><span className="section-number">SHARED ON SUNDAYS</span><h2>Your submissions</h2></div>
+        {projects.length === 0 ? <div className="dashboard-empty"><p>Nothing shared yet. Choose a public repository above or add something else.</p></div> : (
           <div className="dashboard-projects">
             {projects.map((project) => (
               <article className="dashboard-card" key={project.id}>

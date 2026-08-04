@@ -22,6 +22,19 @@ test("submission page explains identity-only GitHub access", async () => {
   assert.match(page, /\/api\/auth\/github\/start/);
 });
 
+test("dashboard lists public GitHub repositories without private repository access", async () => {
+  const [dashboard, github] = await Promise.all([
+    readFile(new URL("../app/dashboard/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../lib/github-public.ts", import.meta.url), "utf8"),
+  ]);
+  assert.match(dashboard, /Choose what to share/);
+  assert.match(dashboard, /Share ↗/);
+  assert.match(dashboard, /Add something else/);
+  assert.match(github, /api\.github\.com\/users/);
+  assert.match(github, /type.*owner/);
+  assert.doesNotMatch(github, /GITHUB_CLIENT_SECRET|\/user\/repos|scope|private/i);
+});
+
 test("schema and hosting contract include D1, R2, moderation, and thumbnail states", async () => {
   const [schema, hosting, oauth] = await Promise.all([
     readFile(new URL("../db/schema.ts", import.meta.url), "utf8"),
