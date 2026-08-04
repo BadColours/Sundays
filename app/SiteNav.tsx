@@ -8,8 +8,8 @@ export async function SiteNav({ active, demo = false }: { active?: "explore" | "
       <Link className="wordmark" href={demo ? "/demo" : "/"}>sundays<span>.</span><small>offhours</small></Link>
       <div className="nav-tabs">
         <Link className={active === "explore" ? "active" : ""} href={demo ? "/demo/explore" : "/explore"}>Explore</Link>
-        <Link className={active === "archive" ? "active" : ""} href="/archive">Archive</Link>
-        <Link className={active === "about" ? "active" : ""} href="/about">About</Link>
+        <Link className={active === "archive" ? "active" : ""} href={demo ? "/demo/archive" : "/archive"}>Archive</Link>
+        <Link className={active === "about" ? "active" : ""} href={demo ? "/demo/about" : "/about"}>About</Link>
       </div>
       <div className="nav-account">
         {creator ? (

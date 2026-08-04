@@ -80,3 +80,17 @@ test("captured project previews preserve the full app frame", async () => {
   assert.match(styles, /\.project-thumbnail\{[^}]*object-fit:contain[^}]*object-position:center top/);
   assert.doesNotMatch(styles, /\.project-thumbnail\{[^}]*object-fit:cover/);
 });
+
+test("the demo has self-contained navigation and no gallery login promotion", async () => {
+  const [nav, gallery, demoArchive, demoAbout] = await Promise.all([
+    readFile(new URL("../app/SiteNav.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/PublicGallery.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/demo/archive/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/demo/about/page.tsx", import.meta.url), "utf8"),
+  ]);
+  assert.match(nav, /demo \? "\/demo\/archive" : "\/archive"/);
+  assert.match(nav, /demo \? "\/demo\/about" : "\/about"/);
+  assert.doesNotMatch(gallery, /collection-empty|Log in/);
+  assert.match(demoArchive, /\/demo\/maker\//);
+  assert.match(demoAbout, /DEMO \/ ABOUT SUNDAYS/);
+});
