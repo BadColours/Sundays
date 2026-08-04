@@ -1,6 +1,7 @@
 import { env } from "cloudflare:workers";
 
 export type ModerationStatus = "draft" | "submitted" | "approved" | "declined" | "unavailable";
+export type ProfileStatus = "visible" | "hidden";
 export type ThumbnailStatus = "pending" | "ready" | "failed";
 export type VerificationStatus = "unverified" | "verified" | "disputed";
 export type LinkCheckStatus = "unchecked" | "healthy" | "failing";
@@ -25,6 +26,7 @@ export type Project = {
   live_url: string;
   repository_url: string | null;
   verification_status: VerificationStatus;
+  profile_status: ProfileStatus;
   moderation_status: ModerationStatus;
   thumbnail_status: ThumbnailStatus;
   thumbnail_storage_key: string | null;
@@ -100,6 +102,7 @@ const schemaStatements = [
     live_url TEXT NOT NULL,
     repository_url TEXT,
     verification_status TEXT NOT NULL DEFAULT 'unverified',
+    profile_status TEXT NOT NULL DEFAULT 'visible',
     moderation_status TEXT NOT NULL DEFAULT 'submitted',
     thumbnail_status TEXT NOT NULL DEFAULT 'pending',
     thumbnail_storage_key TEXT,
@@ -114,6 +117,7 @@ const schemaStatements = [
   )`,
   `CREATE UNIQUE INDEX IF NOT EXISTS projects_slug_idx ON projects (slug)`,
   `CREATE INDEX IF NOT EXISTS projects_creator_idx ON projects (creator_id)`,
+  `CREATE INDEX IF NOT EXISTS projects_creator_profile_idx ON projects (creator_id, profile_status)`,
   `CREATE INDEX IF NOT EXISTS projects_status_published_idx ON projects (moderation_status, published_at)`,
   `CREATE TABLE IF NOT EXISTS sessions (
     token_hash TEXT PRIMARY KEY NOT NULL,
@@ -147,6 +151,7 @@ const schemaStatements = [
 const projectUpgradeStatements = [
   "ALTER TABLE projects ADD COLUMN repository_url TEXT",
   "ALTER TABLE projects ADD COLUMN verification_status TEXT NOT NULL DEFAULT 'unverified'",
+  "ALTER TABLE projects ADD COLUMN profile_status TEXT NOT NULL DEFAULT 'visible'",
   "ALTER TABLE projects ADD COLUMN last_checked_at TEXT",
   "ALTER TABLE projects ADD COLUMN last_check_status TEXT NOT NULL DEFAULT 'unchecked'",
   "ALTER TABLE projects ADD COLUMN consecutive_check_failures INTEGER NOT NULL DEFAULT 0",
@@ -187,11 +192,11 @@ export async function getCreatorByHandle(handle: string): Promise<Creator | null
   return await database().prepare("SELECT * FROM creators WHERE lower(github_handle) = lower(?) LIMIT 1").bind(handle).first<Creator>();
 }
 
-export async function listPublishedProjectsForCreator(creatorId: string): Promise<Project[]> {
+export async function listVisibleProjectsForCreator(creatorId: string): Promise<Project[]> {
   await ensureSchema();
   const result = await database().prepare(`${joinedProjectSelect()}
-    WHERE projects.creator_id = ? AND projects.moderation_status = 'approved'
-    ORDER BY projects.published_at DESC`).bind(creatorId).all<Project>();
+    WHERE projects.creator_id = ? AND projects.profile_status = 'visible'
+    ORDER BY projects.created_at DESC`).bind(creatorId).all<Project>();
   return result.results;
 }
 
@@ -276,8 +281,8 @@ export async function createProject(input: { creatorId: string; title: string; d
   const slug = await uniqueSlug(input.title);
   const now = new Date().toISOString();
   await database().prepare(`INSERT INTO projects
-    (id, creator_id, slug, title, short_description, live_url, repository_url, verification_status, moderation_status, thumbnail_status, last_checked_at, last_check_status, consecutive_check_failures, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'submitted', 'pending', ?, 'healthy', 0, ?, ?)`)
+    (id, creator_id, slug, title, short_description, live_url, repository_url, verification_status, profile_status, moderation_status, thumbnail_status, last_checked_at, last_check_status, consecutive_check_failures, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'visible', 'submitted', 'pending', ?, 'healthy', 0, ?, ?)`)
     .bind(id, input.creatorId, slug, input.title, input.description, input.liveUrl, input.repositoryUrl, input.verificationStatus, now, now, now).run();
   return (await getProjectById(id))!;
 }
@@ -312,7 +317,13 @@ export async function updateOwnedProject(id: string, creatorId: string, input: {
 
 export async function withdrawOwnedProject(id: string, creatorId: string) {
   await ensureSchema();
-  await database().prepare("UPDATE projects SET moderation_status = 'draft', published_at = NULL, updated_at = ? WHERE id = ? AND creator_id = ?")
+  await database().prepare("UPDATE projects SET profile_status = 'hidden', moderation_status = 'draft', published_at = NULL, updated_at = ? WHERE id = ? AND creator_id = ?")
+    .bind(new Date().toISOString(), id, creatorId).run();
+}
+
+export async function showOwnedProjectOnProfile(id: string, creatorId: string) {
+  await ensureSchema();
+  await database().prepare("UPDATE projects SET profile_status = 'visible', updated_at = ? WHERE id = ? AND creator_id = ?")
     .bind(new Date().toISOString(), id, creatorId).run();
 }
 

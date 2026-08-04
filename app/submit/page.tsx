@@ -40,7 +40,7 @@ export default async function SubmitPage({ searchParams }: { searchParams: Promi
             <label>Project title<input name="title" type="text" defaultValue={prefill(title, 80)} minLength={2} maxLength={80} required /></label>
             <label>Short description<textarea name="description" defaultValue={prefill(description, 240)} minLength={10} maxLength={240} rows={4} required /></label>
             <p className="permission-copy">By submitting, you confirm the public page is yours to share and grant Sundays permission to capture and display a promotional image of it. A matching personal GitHub repository adds maker verification; it is not required for gallery review.</p>
-            <button className="mvp-button primary" type="submit">Submit for review ↗</button>
+            <button className="mvp-button primary" type="submit">Share project ↗</button>
           </form>
         )}
       </section>

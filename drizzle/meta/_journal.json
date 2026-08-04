@@ -15,6 +15,13 @@
       "when": 1785775334021,
       "tag": "0001_slippery_diamondback",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1785876529188,
+      "tag": "0002_neat_jane_foster",
+      "breakpoints": true
     }
   ]
 }

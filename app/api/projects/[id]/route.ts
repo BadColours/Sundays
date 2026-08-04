@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { updateOwnedProject, withdrawOwnedProject } from "../../../../db/repository";
+import { showOwnedProjectOnProfile, updateOwnedProject, withdrawOwnedProject } from "../../../../db/repository";
 import { currentCreator } from "../../../../lib/auth";
 import { verifyProjectFields, formErrorUrl } from "../../../../lib/project-input";
 
@@ -13,6 +13,10 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     if (action === "withdraw") {
       await withdrawOwnedProject(id, creator.id);
       return NextResponse.redirect(new URL("/dashboard?updated=withdrawn", request.url), 303);
+    }
+    if (action === "show_profile") {
+      await showOwnedProjectOnProfile(id, creator.id);
+      return NextResponse.redirect(new URL("/dashboard?updated=profile", request.url), 303);
     }
     const input = await verifyProjectFields(form, creator.github_handle);
     const updated = await updateOwnedProject(id, creator.id, input);

@@ -7,12 +7,12 @@ import { SiteNav } from "../SiteNav";
 
 export const dynamic = "force-dynamic";
 
-function statusCopy(project: Project) {
-  if (project.moderation_status === "submitted") return "In review";
-  if (project.moderation_status === "approved") return "Published";
+function galleryStatusCopy(project: Project) {
+  if (project.moderation_status === "submitted") return "Gallery: in review";
+  if (project.moderation_status === "approved") return "Gallery: published";
   if (project.moderation_status === "declined") return "Changes requested";
   if (project.moderation_status === "unavailable") return "Unavailable";
-  return "Draft / withdrawn";
+  return "Not in gallery review";
 }
 
 export default async function DashboardPage({ searchParams }: { searchParams: Promise<{ submitted?: string; updated?: string; error?: string }> }) {
@@ -32,8 +32,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       <SiteNav />
       <section className="mvp-page dashboard-page shell">
         <div className="dashboard-heading"><div><span className="section-number">CREATOR / @{creator.github_handle}</span><h1>Your projects</h1><p className="profile-live-note">Your maker profile is live now. <Link href={`/maker/${creator.github_handle}`}>View public profile ↗</Link></p></div><Link className="mvp-button primary" href="/submit">Add something else ↗</Link></div>
-        {query.submitted && <div className="form-notice success" role="status"><b>Your project is in review for the gallery.</b> Your maker profile is already public.</div>}
-        {query.updated && <div className="form-notice success" role="status">Your project has been updated.</div>}
+        {query.submitted && <div className="form-notice success" role="status"><b>Your project is live on your profile.</b> It is also in review for the gallery.</div>}
+        {query.updated && <div className="form-notice success" role="status">{query.updated === "withdrawn" ? "The project is now hidden from your profile and withdrawn from gallery review." : query.updated === "profile" ? "The project is live on your profile." : "Your project has been updated."}</div>}
         {query.error && <div className="form-notice error" role="alert">{query.error}</div>}
         <section className="repository-picker" aria-labelledby="public-repositories-heading">
           <div className="repository-picker-heading"><div><span className="section-number">PUBLIC ON GITHUB</span><h2 id="public-repositories-heading">Choose what to share.</h2></div><span>{repositories.length} repositories</span></div>
@@ -59,7 +59,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
             {projects.map((project) => (
               <article className="dashboard-card" key={project.id}>
                 <div className="dashboard-thumb"><ProjectThumbnail project={project} /></div>
-                <div className="dashboard-card-head"><div><span className={`status-chip status-${project.moderation_status}`}>{statusCopy(project)}</span><span className={`status-chip thumbnail-${project.thumbnail_status}`}>Thumbnail: {project.thumbnail_status}</span><span className={`status-chip verification-${project.verification_status}`}>{project.verification_status === "verified" ? "Maker verified" : "Unverified"}</span><span className={`status-chip link-${project.last_check_status}`}>Link: {project.last_check_status}</span></div><small>Submitted {new Date(project.created_at).toLocaleDateString()}</small></div>
+                <div className="dashboard-card-head"><div><span className={`status-chip profile-${project.profile_status}`}>{project.profile_status === "visible" ? "Live on profile" : "Hidden from profile"}</span><span className={`status-chip status-${project.moderation_status}`}>{galleryStatusCopy(project)}</span><span className={`status-chip thumbnail-${project.thumbnail_status}`}>Thumbnail: {project.thumbnail_status}</span><span className={`status-chip verification-${project.verification_status}`}>{project.verification_status === "verified" ? "Maker verified" : "Unverified"}</span><span className={`status-chip link-${project.last_check_status}`}>Link: {project.last_check_status}</span></div><small>Shared {new Date(project.created_at).toLocaleDateString()}</small></div>
                 <form className="dashboard-edit-form" action={`/api/projects/${project.id}`} method="post">
                   <input type="hidden" name="action" value="update" />
                   <label>Title<input name="title" defaultValue={project.title} minLength={2} maxLength={80} required /></label>
@@ -71,7 +71,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                 </form>
                 <div className="secondary-actions">
                   <form action={`/api/projects/${project.id}/recapture`} method="post"><button type="submit">Recapture thumbnail</button></form>
-                  <form action={`/api/projects/${project.id}`} method="post"><input type="hidden" name="action" value="withdraw" /><button className="danger-link" type="submit">{project.moderation_status === "approved" ? "Unpublish" : "Withdraw"}</button></form>
+                  {project.profile_status === "visible" ? <form action={`/api/projects/${project.id}`} method="post"><input type="hidden" name="action" value="withdraw" /><button className="danger-link" type="submit">Hide from profile</button></form> : <form action={`/api/projects/${project.id}`} method="post"><input type="hidden" name="action" value="show_profile" /><button type="submit">Share on profile</button></form>}
                 </div>
               </article>
             ))}

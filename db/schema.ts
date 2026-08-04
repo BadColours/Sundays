@@ -23,6 +23,7 @@ export const projects = sqliteTable("projects", {
   liveUrl: text("live_url").notNull(),
   repositoryUrl: text("repository_url"),
   verificationStatus: text("verification_status", { enum: ["unverified", "verified", "disputed"] }).notNull().default("unverified"),
+  profileStatus: text("profile_status", { enum: ["visible", "hidden"] }).notNull().default("visible"),
   moderationStatus: text("moderation_status", { enum: ["draft", "submitted", "approved", "declined", "unavailable"] }).notNull().default("submitted"),
   thumbnailStatus: text("thumbnail_status", { enum: ["pending", "ready", "failed"] }).notNull().default("pending"),
   thumbnailStorageKey: text("thumbnail_storage_key"),
@@ -37,6 +38,7 @@ export const projects = sqliteTable("projects", {
 }, (table) => [
   uniqueIndex("projects_slug_idx").on(table.slug),
   index("projects_creator_idx").on(table.creatorId),
+  index("projects_creator_profile_idx").on(table.creatorId, table.profileStatus),
   index("projects_status_published_idx").on(table.moderationStatus, table.publishedAt),
 ]);
 

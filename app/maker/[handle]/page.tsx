@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getCreatorByHandle, listPublishedProjectsForCreator } from "../../../db/repository";
+import { getCreatorByHandle, listVisibleProjectsForCreator } from "../../../db/repository";
 import { ProjectThumbnail } from "../../ProjectThumbnail";
 import { SiteNav } from "../../SiteNav";
 
@@ -12,7 +12,7 @@ export async function generateMetadata({ params }: { params: Promise<{ handle: s
   try {
     const creator = await getCreatorByHandle(handle);
     if (!creator) return { title: "Maker not found — sundays" };
-    return { title: `${creator.display_name} (@${creator.github_handle}) — sundays`, description: `Published projects by ${creator.display_name} on Sundays.` };
+    return { title: `${creator.display_name} (@${creator.github_handle}) — sundays`, description: `Projects shared by ${creator.display_name} on Sundays.` };
   } catch { return { title: "Maker — sundays" }; }
 }
 
@@ -21,7 +21,7 @@ export default async function MakerPage({ params }: { params: Promise<{ handle: 
   let creator;
   try { creator = await getCreatorByHandle(handle); } catch { creator = null; }
   if (!creator) notFound();
-  const projects = await listPublishedProjectsForCreator(creator.id);
+  const projects = await listVisibleProjectsForCreator(creator.id);
   return (
     <main className="profile">
       <SiteNav />
@@ -38,7 +38,7 @@ export default async function MakerPage({ params }: { params: Promise<{ handle: 
               <div className="profile-project-caption"><strong><a href={project.live_url} target="_blank" rel="noopener noreferrer">{project.title}</a></strong><small>{project.short_description}</small><a href={project.live_url} target="_blank" rel="noopener noreferrer">Launch project ↗</a></div>
             </article>
           ))}
-          {projects.length === 0 && <div className="profile-no-projects"><span>PUBLIC PROFILE</span><p>{creator.display_name} has not added a project to the gallery yet.</p></div>}
+          {projects.length === 0 && <div className="profile-no-projects"><span>PUBLIC PROFILE</span><p>{creator.display_name} has not shared a project yet.</p></div>}
         </div>
       </section>
       <footer className="profile-footer shell"><Link href="/explore">← Explore more makers</Link><small>© 2026 sundays · offhours</small></footer>

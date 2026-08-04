@@ -3,14 +3,19 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 test("anonymous gallery uses approved records while creator profiles stay open", async () => {
-  const [page, gallery] = await Promise.all([
+  const [page, gallery, maker, repository] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/PublicGallery.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/maker/[handle]/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../db/repository.ts", import.meta.url), "utf8"),
   ]);
   assert.match(page, /listApprovedProjects\(6\)/);
   assert.match(gallery, /OPEN DIRECTORY/);
   assert.match(gallery, /Anyone can create a public maker profile/i);
   assert.match(gallery, /Log in/);
+  assert.match(maker, /listVisibleProjectsForCreator/);
+  assert.match(repository, /profile_status = 'visible'/);
+  assert.match(repository, /moderation_status = 'approved'/);
   assert.doesNotMatch(page + gallery, /Maya Chen|Theo Hart|001—056|Submit from GitHub/);
 });
 
@@ -43,7 +48,7 @@ test("schema and hosting contract include D1, R2, moderation, and thumbnail stat
   ]);
   assert.match(hosting, /"d1": "DB"/);
   assert.match(hosting, /"r2": "THUMBNAILS"/);
-  for (const state of ["draft", "submitted", "approved", "declined", "unavailable", "pending", "ready", "failed"]) assert.match(schema, new RegExp(state));
+  for (const state of ["visible", "hidden", "draft", "submitted", "approved", "declined", "unavailable", "pending", "ready", "failed"]) assert.match(schema, new RegExp(state));
   assert.match(oauth, /No scope parameter/);
   assert.doesNotMatch(oauth, /searchParams\.set\("scope"|read:org|repo:status/);
 });
