@@ -94,3 +94,9 @@ test("the demo has self-contained navigation and no gallery login promotion", as
   assert.match(demoArchive, /\/demo\/maker\//);
   assert.match(demoAbout, /DEMO \/ ABOUT SUNDAYS/);
 });
+
+test("demo profile thumbnails contain their app preview", async () => {
+  const styles = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
+  assert.match(styles, /\.profile-thumb\{[^}]*display:block[^}]*overflow:hidden[^}]*position:relative/);
+  assert.match(styles, /\.profile-thumb \.app-screen\{[^}]*width:100%[^}]*height:calc\(100% - 26px\)/);
+});
