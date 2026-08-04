@@ -34,7 +34,7 @@ export default async function MakerPage({ params }: { params: Promise<{ handle: 
         <div className="profile-projects mvp-profile-projects">
           {projects.map((project) => (
             <article className="profile-project-card" key={project.id}>
-              <a className="profile-thumb creator-image-frame" href={project.live_url} target="_blank" rel="noopener noreferrer"><ProjectThumbnail project={project} /></a>
+              <a className="profile-thumb creator-image-frame" href={project.live_url} target="_blank" rel="noopener noreferrer"><ProjectThumbnail project={project} liveFallback /></a>
               <div className="profile-project-caption"><strong><a href={project.live_url} target="_blank" rel="noopener noreferrer">{project.title}</a></strong><small>{project.short_description}</small><a href={project.live_url} target="_blank" rel="noopener noreferrer">Launch project ↗</a></div>
             </article>
           ))}
