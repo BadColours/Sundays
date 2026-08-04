@@ -20,13 +20,18 @@ test("anonymous gallery uses approved records while creator profiles stay open",
 });
 
 test("submission page explains identity-only GitHub access", async () => {
-  const page = await readFile(new URL("../app/submit/page.tsx", import.meta.url), "utf8");
+  const [page, input] = await Promise.all([
+    readFile(new URL("../app/submit/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../lib/project-input.ts", import.meta.url), "utf8"),
+  ]);
   assert.match(page, /request no repository access/i);
   assert.match(page, /never ingest or deploy code/i);
   assert.match(page, /Share on profile/);
   assert.doesNotMatch(page, /Submit for review/);
   assert.match(page, /Login unavailable/);
   assert.match(page, /\/api\/auth\/github\/start/);
+  assert.match(input, /validatePublicUrl/);
+  assert.doesNotMatch(input, /probePublicUrl/);
 });
 
 test("dashboard lists public GitHub repositories without private repository access", async () => {

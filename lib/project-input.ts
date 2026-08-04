@@ -1,4 +1,4 @@
-import { probePublicUrl, validatePublicUrl } from "./url-safety";
+import { validatePublicUrl } from "./url-safety";
 import type { VerificationStatus } from "../db/repository";
 
 export function readProjectFields(form: FormData) {
@@ -24,15 +24,13 @@ export function readProjectFields(form: FormData) {
 
 export async function verifyProjectFields(form: FormData, githubHandle: string) {
   const fields = readProjectFields(form);
-  const liveUrl = await probePublicUrl(fields.liveUrl);
-  let repositoryUrl = fields.repositoryUrl;
+  const repositoryUrl = fields.repositoryUrl;
   let verificationStatus: VerificationStatus = "unverified";
   if (repositoryUrl) {
-    repositoryUrl = await probePublicUrl(repositoryUrl);
     const owner = new URL(repositoryUrl).pathname.split("/").filter(Boolean)[0] ?? "";
     if (owner.toLowerCase() === githubHandle.toLowerCase()) verificationStatus = "verified";
   }
-  return { ...fields, liveUrl, repositoryUrl, verificationStatus };
+  return { ...fields, repositoryUrl, verificationStatus };
 }
 
 export function formErrorUrl(path: string, error: unknown) {
