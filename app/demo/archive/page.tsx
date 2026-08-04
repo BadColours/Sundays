@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ProjectPreview } from "../../ProjectPreview";
 import { SiteNav } from "../../SiteNav";
-import { galleryProjects } from "../../fixtures/demoGallery";
+import { galleryProjects, projectSlug } from "../../fixtures/demoGallery";
 
 export default function DemoArchivePage() {
   const projects = galleryProjects.slice(0, 6).reverse();
@@ -14,14 +14,14 @@ export default function DemoArchivePage() {
           {projects.map((project) => (
             <div className="archive-row" key={project.handle}>
               <span className="archive-number">{project.number}</span>
-              <Link className="archive-thumb" href={`/demo/${project.handle}`}>
+              <Link className="archive-thumb" href={`/demo/${projectSlug(project)}`}>
                 {project.thumbnail ? <img src={project.thumbnail} alt={`Preview of ${project.title}`} /> : <ProjectPreview type={project.preview} title={project.title} />}
               </Link>
-              <strong><Link href={`/demo/${project.handle}`}>{project.title}</Link></strong>
+              <strong><Link href={`/demo/${projectSlug(project)}`}>{project.title}</Link></strong>
               <span><Link href={`/demo/maker/${project.handle}`}>{project.maker}</Link></span>
               <span>Concept</span>
               <span />
-              <Link href={`/demo/${project.handle}`} aria-label={`Open ${project.title}`}>↗</Link>
+              <Link href={`/demo/${projectSlug(project)}`} aria-label={`Open ${project.title}`}>↗</Link>
             </div>
           ))}
         </div>

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { ProjectPreview } from "./ProjectPreview";
-import { galleryProjects } from "./fixtures/demoGallery";
+import { galleryProjects, projectSlug } from "./fixtures/demoGallery";
 
 const types = ["All", "Navigation", "Audio", "Tools"] as const;
 const exploreCatalogue = galleryProjects.slice(6);
@@ -60,7 +60,7 @@ export function ExploreGallery({ featuredOnly = false }: { featuredOnly?: boolea
       <div className="project-grid">
         {shownProjects.map((project) => (
           <article className="project-card" key={project.title}>
-            <Link className={`preview-frame ${project.color}${project.thumbnail && !featuredOnly ? " creator-image-frame" : ""}`} href={`/demo/${project.handle}`} aria-label={`Open ${project.title}`}>
+            <Link className={`preview-frame ${project.color}${project.thumbnail && !featuredOnly ? " creator-image-frame" : ""}`} href={`/demo/${projectSlug(project)}`} aria-label={`Open ${project.title}`}>
               {!featuredOnly ? (
                 project.thumbnail ? <img className="creator-preview explore-curated-preview" src={project.thumbnail} alt={`Preview of ${project.title}`} /> : <ProjectPreview type={project.preview} title={project.title} />
               ) : project.thumbnail ? (
@@ -78,7 +78,7 @@ export function ExploreGallery({ featuredOnly = false }: { featuredOnly?: boolea
             </Link>
             <div className={`project-meta${featuredOnly ? "" : " without-number"}`}>
               {featuredOnly && <span className="project-number">{project.number}</span>}
-              <div className="project-copy"><h3><Link href={`/demo/${project.handle}`}>{project.title}</Link></h3><Link className="project-maker" href={`/demo/maker/${project.handle}`}>{project.maker}</Link><p>{project.description}</p></div>
+              <div className="project-copy"><h3><Link href={`/demo/${projectSlug(project)}`}>{project.title}</Link></h3><Link className="project-maker" href={`/demo/maker/${project.handle}`}>{project.maker}</Link><p>{project.description}</p></div>
             </div>
           </article>
         ))}

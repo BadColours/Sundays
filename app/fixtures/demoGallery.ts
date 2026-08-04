@@ -105,6 +105,21 @@ function handleFor(name: string) {
   return name.toLowerCase().replaceAll(" ", "");
 }
 
+export function projectSlug(project: Pick<GalleryProject, "title">) {
+  return project.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+}
+
+// Keep the demo believable: most makers have one project, while a stable,
+// scattered subset has a second. The assignment is deterministic so links and
+// profiles do not reshuffle between page loads.
+const makerIndexByProject = [
+  0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
+  10, 11, 12, 13, 14, 15, 16, 17, 18, 19,
+  20, 21, 22, 23, 24, 25, 26, 27, 28, 29,
+  30, 31, 32, 33, 34, 35, 36, 37,
+  0, 4, 8, 12, 16, 20, 24, 28, 32, 36, 5, 17,
+];
+
 const categoryPreviewCounts: Record<GalleryProject["type"], number> = { Games: 0, Navigation: 0, Audio: 0, Tools: 0 };
 
 // The local concept gallery deliberately mixes unrelated visual languages. These
@@ -126,10 +141,10 @@ const curatedThumbnails: Record<string, number | string> = {
   Interval: 48, Sequence: 42, "Team Sheet": 45,
 };
 
-const mockProjects: GalleryProject[] = mockNames.map((maker, index) => {
+const mockProjects: GalleryProject[] = mockTitles.map((title, index) => {
+  const maker = mockNames[makerIndexByProject[index]];
   const type = categories[index];
   const previewIndex = categoryPreviewCounts[type]++;
-  const title = mockTitles[index];
   const curatedThumbnail = curatedThumbnails[title];
   const tags = type === "Games" ? ["Canvas", "TypeScript"] : type === "Navigation" ? ["MapLibre", "GPS"] : type === "Audio" ? ["VST3", "JUCE"] : ["Svelte", "SQLite"];
   return {
@@ -156,15 +171,17 @@ export type MockMaker = {
   accent: string;
 };
 
-export const mockMakerMap: Record<string, MockMaker> = Object.fromEntries(
-  mockProjects.map((project, index) => [
-    project.handle,
-    {
-      name: project.maker,
-      bio: "Independent coder making personal software after hours.",
-      location: locations[index % locations.length],
-      projects: [{ name: project.title, type: project.preview, thumbnail: project.thumbnail }],
-      accent: accents[index % accents.length],
-    },
-  ]),
-);
+export const mockMakerMap: Record<string, MockMaker> = mockProjects.reduce<Record<string, MockMaker>>((makers, project) => {
+  const makerIndex = mockNames.indexOf(project.maker);
+  const existing = makers[project.handle];
+  const makerProject = { name: project.title, type: project.preview, thumbnail: project.thumbnail };
+  if (existing) existing.projects.push(makerProject);
+  else makers[project.handle] = {
+    name: project.maker,
+    bio: "Independent coder making personal software after hours.",
+    location: locations[makerIndex % locations.length],
+    projects: [makerProject],
+    accent: accents[makerIndex % accents.length],
+  };
+  return makers;
+}, {});

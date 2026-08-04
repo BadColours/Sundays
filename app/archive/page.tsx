@@ -3,7 +3,7 @@ import { listApprovedProjects, type Project } from "../../db/repository";
 import { ProjectThumbnail } from "../ProjectThumbnail";
 import { SiteNav } from "../SiteNav";
 import { ProjectPreview } from "../ProjectPreview";
-import { galleryProjects } from "../fixtures/demoGallery";
+import { galleryProjects, projectSlug } from "../fixtures/demoGallery";
 
 export const dynamic = "force-dynamic";
 
@@ -22,11 +22,11 @@ export default async function ArchivePage() {
             {demoProjects.map((project) => (
               <div className="archive-row" key={project.handle}>
                 <span className="archive-number">{project.number}</span>
-                <Link className="archive-thumb" href={`/demo/${project.handle}`}>
+                <Link className="archive-thumb" href={`/demo/${projectSlug(project)}`}>
                   {project.thumbnail ? <img src={project.thumbnail} alt="" /> : <ProjectPreview type={project.preview} />}
                 </Link>
-                <strong><Link href={`/demo/${project.handle}`}>{project.title}</Link></strong>
-                <span><Link href={`/maker/${project.handle}`}>{project.maker}</Link></span>
+                <strong><Link href={`/demo/${projectSlug(project)}`}>{project.title}</Link></strong>
+                <span><Link href={`/demo/maker/${project.handle}`}>{project.maker}</Link></span>
                 <span>Concept</span><span /><span>↗</span>
               </div>
             ))}

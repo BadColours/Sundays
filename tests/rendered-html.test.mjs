@@ -100,3 +100,13 @@ test("demo profile thumbnails contain their app preview", async () => {
   assert.match(styles, /\.profile-thumb\{[^}]*display:block[^}]*overflow:hidden[^}]*position:relative/);
   assert.match(styles, /\.profile-thumb \.app-screen\{[^}]*width:100%[^}]*height:calc\(100% - 26px\)/);
 });
+
+test("demo profiles support multiple projects with distinct project routes", async () => {
+  const fixture = await readFile(new URL("../app/fixtures/demoGallery.ts", import.meta.url), "utf8");
+  const makerPage = await readFile(new URL("../app/demo/maker/[handle]/page.tsx", import.meta.url), "utf8");
+  assert.match(fixture, /makerIndexByProject/);
+  assert.match(fixture, /projectSlug/);
+  assert.match(makerPage, /galleryProjects\.filter/);
+  assert.match(makerPage, /projects\.map/);
+  assert.match(makerPage, /demo-profile-projects/);
+});

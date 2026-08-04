@@ -1,11 +1,11 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ProjectPreview } from "../../ProjectPreview";
-import { galleryProjects } from "../../fixtures/demoGallery";
+import { galleryProjects, projectSlug } from "../../fixtures/demoGallery";
 
 export default async function DemoAppPage({ params }: { params: Promise<{ handle: string }> }) {
   const { handle } = await params;
-  const project = galleryProjects.find((item) => item.handle === handle);
+  const project = galleryProjects.find((item) => projectSlug(item) === handle);
   if (!project) notFound();
 
   return (
