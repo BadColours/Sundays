@@ -75,3 +75,9 @@ test("schema and hosting contract include D1, R2, moderation, and thumbnail stat
   assert.match(oauth, /No scope parameter/);
   assert.doesNotMatch(oauth, /searchParams\.set\("scope"|read:org|repo:status/);
 });
+
+test("captured project previews preserve the full app frame", async () => {
+  const styles = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
+  assert.match(styles, /\.project-thumbnail\{[^}]*object-fit:contain[^}]*object-position:center top/);
+  assert.doesNotMatch(styles, /\.project-thumbnail\{[^}]*object-fit:cover/);
+});
