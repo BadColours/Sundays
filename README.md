@@ -29,9 +29,11 @@ Sundays deliberately omits the OAuth `scope` parameter. GitHub is used only for 
 
 Set `ADMIN_GITHUB_HANDLES` to a comma-separated allowlist of GitHub handles permitted to use `/admin`.
 
-## Screenshot service contract
+## Screenshot capture
 
-Automatic captures are isolated behind `SCREENSHOT_API_URL`. When configured, Sundays sends an authenticated `POST` with:
+Sundays uses Webshot's public `desktop_viewport` capture endpoint by default and stores the returned image in its own R2 bucket. The public service is suitable for early testing but rate-limited, so production can override it with `SCREENSHOT_API_URL` and `SCREENSHOT_API_TOKEN`.
+
+For a custom capture provider, Sundays sends an authenticated `POST` with:
 
 ```json
 {
@@ -42,7 +44,7 @@ Automatic captures are isolated behind `SCREENSHOT_API_URL`. When configured, Su
 }
 ```
 
-The provider must return raw `image/webp`, `image/png`, or `image/jpeg` bytes, enforce private-network blocking independently, and complete within 25 seconds. `SCREENSHOT_API_TOKEN` is sent as a bearer token when present. Without this service, submissions and moderation still work, thumbnail state is honestly marked `failed`, and the UI displays a generated fallback rather than pretending a capture succeeded.
+The provider must return raw `image/webp`, `image/png`, or `image/jpeg` bytes, enforce private-network blocking independently, and complete within 50 seconds. `SCREENSHOT_API_TOKEN` is sent as a bearer token when present. Capture failures never prevent profile sharing; the dashboard offers a retry.
 
 ## Production setup checklist
 
@@ -50,7 +52,7 @@ The provider must return raw `image/webp`, `image/png`, or `image/jpeg` bytes, e
 2. Configure the `DB` and `THUMBNAILS` bindings through Sites.
 3. Create the GitHub OAuth App and add the three GitHub/origin variables above.
 4. Set the administrator handle allowlist.
-5. Optionally configure the screenshot service and token.
+5. Optionally configure a higher-volume screenshot service and token.
 6. Test sign-in, submission, thumbnail capture/failure, moderation, publication, launch links, and broken-link reports before recruiting creators.
 
 ## Validation

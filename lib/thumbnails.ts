@@ -1,7 +1,8 @@
 import { bindings, getProjectById, setProjectLinkHealth, setThumbnailState } from "../db/repository";
-import { probePublicUrl } from "./url-safety";
+import { validatePublicUrl } from "./url-safety";
 
 const MAX_THUMBNAIL_BYTES = 5_000_000;
+const DEFAULT_SCREENSHOT_API_URL = "https://webshot.site/api/capture";
 
 export async function captureProjectThumbnail(projectId: string) {
   const project = await getProjectById(projectId);
@@ -11,26 +12,26 @@ export async function captureProjectThumbnail(projectId: string) {
     await setThumbnailState(projectId, "failed", null, "Thumbnail storage is not configured.");
     return;
   }
-  if (!runtime.SCREENSHOT_API_URL) {
-    await setThumbnailState(projectId, "failed", null, "Automatic capture is not configured yet.");
-    return;
-  }
-
   try {
-    const safeUrl = await probePublicUrl(project.live_url);
-    await setProjectLinkHealth(projectId, true);
+    const safeUrl = validatePublicUrl(project.live_url).toString();
+    const screenshotApiUrl = runtime.SCREENSHOT_API_URL ?? DEFAULT_SCREENSHOT_API_URL;
+    const isWebshot = new URL(screenshotApiUrl).hostname === "webshot.site";
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 25_000);
+    const timeout = setTimeout(() => controller.abort(), 50_000);
     let response: Response;
     try {
-      response = await fetch(runtime.SCREENSHOT_API_URL, {
+      response = await fetch(screenshotApiUrl, {
         method: "POST",
         headers: {
           "content-type": "application/json",
           accept: "image/webp,image/png,image/jpeg",
           ...(runtime.SCREENSHOT_API_TOKEN ? { authorization: `Bearer ${runtime.SCREENSHOT_API_TOKEN}` } : {}),
         },
-        body: JSON.stringify({
+        body: JSON.stringify(isWebshot ? {
+          url: safeUrl,
+          format: "webp",
+          mode: "desktop_viewport",
+        } : {
           url: safeUrl,
           viewport: { width: 1440, height: 1024 },
           output: { format: "webp", quality: 82, width: 1200, height: 850 },
@@ -52,6 +53,7 @@ export async function captureProjectThumbnail(projectId: string) {
     const key = `projects/${project.id}/${crypto.randomUUID()}.${extension}`;
     await runtime.THUMBNAILS.put(key, bytes, { httpMetadata: { contentType, cacheControl: "public, max-age=31536000, immutable" } });
     await setThumbnailState(projectId, "ready", key, null);
+    await setProjectLinkHealth(projectId, true);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Thumbnail capture failed.";
     await setThumbnailState(projectId, "failed", null, message.slice(0, 180));

@@ -43,9 +43,8 @@ test("dashboard lists public GitHub repositories without private repository acce
   assert.match(dashboard, /Choose what to share/);
   assert.match(dashboard, /Share ↗/);
   assert.match(dashboard, /Add something else/);
-  assert.match(dashboard, /liveFallback/);
-  assert.doesNotMatch(dashboard, /Recapture thumbnail/);
-  assert.match(thumbnail, /sandbox="allow-scripts"/);
+  assert.match(dashboard, /Capture preview/);
+  assert.doesNotMatch(thumbnail, /iframe|liveFallback/);
   assert.match(github, /api\.github\.com\/users/);
   assert.match(github, /type.*owner/);
   assert.doesNotMatch(github, /GITHUB_CLIENT_SECRET|\/user\/repos|scope|private/i);
