@@ -114,6 +114,7 @@ test("demo profiles support multiple projects with distinct project routes", asy
 test("all image thumbnails use one frameless contain model", async () => {
   const styles = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
   assert.match(styles, /\.creator-image-frame\{[^}]*border:0!important/);
+  assert.match(styles, /\.creator-image-frame\{[^}]*place-items:center[^}]*padding:clamp\(8px,1vw,14px\)!important/);
   assert.match(styles, /\.creator-preview\{[^}]*object-fit:contain/);
   assert.match(styles, /\.profile-projects \.profile-thumb\.creator-image-frame img\{[^}]*object-fit:contain[^}]*transform:none/);
   assert.match(styles, /\.profile-projects \.profile-thumb\.creator-image-frame::after\{content:none/);
