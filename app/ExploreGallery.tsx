@@ -60,7 +60,7 @@ export function ExploreGallery({ featuredOnly = false }: { featuredOnly?: boolea
       <div className="project-grid">
         {shownProjects.map((project) => (
           <article className="project-card" key={project.title}>
-            <Link className={`preview-frame ${project.color}${project.thumbnail ? " creator-image-frame" : ""}`} href={`/demo/${projectSlug(project)}`} aria-label={`Open ${project.title}`}>
+            <Link className={`preview-frame ${project.color}${project.thumbnail ? " creator-image-frame demo-normalized-frame" : ""}`} href={`/demo/${projectSlug(project)}`} aria-label={`Open ${project.title}`}>
               {project.thumbnail ? (
                 <img className="creator-preview" src={project.thumbnail} alt={`Preview of ${project.title}`} />
               ) : (

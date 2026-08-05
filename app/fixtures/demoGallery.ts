@@ -14,11 +14,11 @@ export type GalleryProject = {
 
 const featuredProjects: GalleryProject[] = [
   { number: "01", title: "Touchline", maker: "Theo Hart", handle: "theohart", description: "A fast, one-button soccer game built for dramatic finishes.", tags: ["React", "Canvas"], color: "blue", preview: "soccer", type: "Games" },
-  { number: "02", title: "Shortcut", maker: "Noa Bloom", handle: "noabloom", description: "Creates pedestrian shortcuts from paths shared by neighbors.", tags: ["MapLibre", "GPS"], color: "violet", preview: "mock-27", thumbnail: "/explore-thumbs/28.png", type: "Navigation" },
+  { number: "02", title: "Shortcut", maker: "Noa Bloom", handle: "noabloom", description: "Creates pedestrian shortcuts from paths shared by neighbors.", tags: ["MapLibre", "GPS"], color: "violet", preview: "mock-27", thumbnail: "/explore-thumbs/normalized/28.webp", type: "Navigation" },
   { number: "03", title: "Altitude", maker: "Maya Chen", handle: "mayachen", description: "A pocket flight simulator for unhurried trips above the clouds.", tags: ["Three.js", "TypeScript"], color: "lime", preview: "flight", type: "Games" },
   { number: "04", title: "Hush", maker: "Jon Bell", handle: "jonbell", description: "A tiny noise meter for finding a quieter room.", tags: ["Web Audio", "React"], color: "coral", preview: "hush", type: "Audio" },
   { number: "05", title: "Bearings", maker: "Noor Ahmed", handle: "noorahmed", description: "A playful navigation tool for getting pleasantly less lost.", tags: ["MapLibre", "GPS"], color: "coral", preview: "navigation", type: "Navigation" },
-  { number: "06", title: "Field Study", maker: "Bo Hart", handle: "bohart", description: "Logs observations from walks as points on a shared neighborhood field map.", tags: ["MapLibre", "GPS"], color: "blue", preview: "mock-34", thumbnail: "/explore-thumbs/35.png", type: "Navigation" },
+  { number: "06", title: "Field Study", maker: "Bo Hart", handle: "bohart", description: "Logs observations from walks as points on a shared neighborhood field map.", tags: ["MapLibre", "GPS"], color: "blue", preview: "mock-34", thumbnail: "/explore-thumbs/normalized/35.webp", type: "Navigation" },
 ];
 
 const mockNames = [
@@ -156,7 +156,7 @@ const mockProjects: GalleryProject[] = mockTitles.map((title, index) => {
     tags,
     color: colors[index % colors.length],
     preview: `${type === "Audio" ? "audio" : type === "Navigation" ? "nav" : "tool"}-${previewIndex}`,
-    thumbnail: `/explore-thumbs/${typeof curatedThumbnail === "number" ? `${String(curatedThumbnail).padStart(2, "0")}.png` : curatedThumbnail}`,
+    thumbnail: `/explore-thumbs/normalized/${typeof curatedThumbnail === "number" ? String(curatedThumbnail).padStart(2, "0") : curatedThumbnail.replace(/\.[^.]+$/, "")}.webp`,
     type,
   };
 });
