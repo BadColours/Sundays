@@ -184,3 +184,28 @@ button,input,textarea,select{font:inherit;color:inherit}button{cursor:pointer;ba
 /* Profile visibility is distinct from editorial gallery review. */
 .profile-visible{border-color:#297b4c;color:#236b42}
 .profile-hidden{color:#666;border-color:#999}
+
+/* Demo artwork is presented without a gallery frame. Images stay uncropped by
+   default; only the two source screenshots with baked edge mats get a tiny,
+   explicit bleed so their artwork aligns with the rest of the collection. */
+.demo-frameless-frame{overflow:hidden}
+.demo-edge-bleed,
+.profile-projects .profile-thumb.creator-image-frame .demo-edge-bleed,
+.demo-app-surface.image .demo-edge-bleed{
+  display:block;
+  width:100%!important;
+  height:100%!important;
+  max-width:100%!important;
+  margin:0!important;
+  object-fit:contain!important;
+  object-position:center!important;
+  transform:none!important;
+}
+.demo-edge-bleed[src$="/23.png"],
+.demo-edge-bleed[src$="/49.png"]{
+  width:104%!important;
+  height:104%!important;
+  max-width:none!important;
+  margin:-2%!important;
+  object-fit:cover!important;
+}

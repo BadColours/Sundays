@@ -23,7 +23,7 @@ export default async function ArchivePage() {
               <div className="archive-row" key={project.handle}>
                 <span className="archive-number">{project.number}</span>
                 <Link className="archive-thumb" href={`/demo/${projectSlug(project)}`}>
-                  {project.thumbnail ? <img src={project.thumbnail} alt="" /> : <ProjectPreview type={project.preview} />}
+                  {project.thumbnail ? <img className="demo-edge-bleed" src={project.thumbnail} alt="" /> : <ProjectPreview type={project.preview} />}
                 </Link>
                 <strong><Link href={`/demo/${projectSlug(project)}`}>{project.title}</Link></strong>
                 <span><Link href={`/demo/maker/${project.handle}`}>{project.maker}</Link></span>

@@ -18,10 +18,6 @@ function shuffleProjects(projects: typeof galleryProjects) {
   return shuffled;
 }
 
-function Arrow() {
-  return <span aria-hidden="true">↗</span>;
-}
-
 export function ExploreGallery({ featuredOnly = false }: { featuredOnly?: boolean }) {
   const [activeType, setActiveType] = useState<(typeof types)[number]>("All");
   const [visibleCount, setVisibleCount] = useState(pageSize);
@@ -62,14 +58,13 @@ export function ExploreGallery({ featuredOnly = false }: { featuredOnly?: boolea
           <article className="project-card" key={project.title}>
             <Link className={`preview-frame ${project.color}${project.thumbnail ? " creator-image-frame demo-frameless-frame" : ""}`} href={`/demo/${projectSlug(project)}`} aria-label={`Open ${project.title}`}>
               {project.thumbnail ? (
-                <img className="creator-preview" src={project.thumbnail} alt={`Preview of ${project.title}`} />
+                <img className="creator-preview demo-edge-bleed" src={project.thumbnail} alt={`Preview of ${project.title}`} />
               ) : (
                 <>
                   <div className="browser-chrome"><span /><span /><span /><b>{project.title.toLowerCase()}.app</b></div>
                   <ProjectPreview type={project.preview} title={project.title} />
                 </>
               )}
-              <span className="open-pill">Open app <Arrow /></span>
             </Link>
             <div className={`project-meta${featuredOnly ? "" : " without-number"}`}>
               {featuredOnly && <span className="project-number">{project.number}</span>}

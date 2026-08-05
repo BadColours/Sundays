@@ -15,7 +15,7 @@ export default function DemoArchivePage() {
             <div className="archive-row" key={project.handle}>
               <span className="archive-number">{project.number}</span>
               <Link className="archive-thumb" href={`/demo/${projectSlug(project)}`}>
-                {project.thumbnail ? <img src={project.thumbnail} alt={`Preview of ${project.title}`} /> : <ProjectPreview type={project.preview} title={project.title} />}
+                {project.thumbnail ? <img className="demo-edge-bleed" src={project.thumbnail} alt={`Preview of ${project.title}`} /> : <ProjectPreview type={project.preview} title={project.title} />}
               </Link>
               <strong><Link href={`/demo/${projectSlug(project)}`}>{project.title}</Link></strong>
               <span><Link href={`/demo/maker/${project.handle}`}>{project.maker}</Link></span>

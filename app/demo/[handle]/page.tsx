@@ -13,7 +13,7 @@ export default async function DemoAppPage({ params }: { params: Promise<{ handle
       <Link className="demo-app-back" href="/demo/explore">← demo gallery</Link>
       <div className={`demo-app-surface${project.thumbnail ? " image" : ""}`}>
         {project.thumbnail
-          ? <img src={project.thumbnail} alt={`${project.title} application`} />
+          ? <img className="demo-edge-bleed" src={project.thumbnail} alt={`${project.title} application`} />
           : <ProjectPreview type={project.preview} title={project.title} />}
       </div>
     </main>
