@@ -113,6 +113,7 @@ test("demo profiles support multiple projects with distinct project routes", asy
 
 test("demo profile image thumbnails share one consistent frame", async () => {
   const styles = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
-  assert.match(styles, /\.demo-profile-projects \.profile-thumb\.creator-image-frame\{[^}]*border:1px solid #111/);
-  assert.match(styles, /\.demo-profile-projects \.profile-thumb\.creator-image-frame \.creator-preview\{[^}]*margin:-4px/);
+  assert.match(styles, /\.profile-projects \.profile-thumb\.creator-image-frame\{[^}]*border:1px solid #111/);
+  assert.match(styles, /\.profile-projects \.profile-thumb\.creator-image-frame img\{[^}]*transform:scale\(1\.04\)/);
+  assert.match(styles, /\.profile-projects \.profile-thumb\.creator-image-frame::after\{[^}]*border:1px solid #111/);
 });
