@@ -23,7 +23,7 @@ export default async function DemoMakerPage({ params }: { params: Promise<{ hand
         <div className="profile-projects demo-profile-projects">
           {projects.map((project) => (
             <article className="profile-project-card" key={project.title}>
-              <Link className={`profile-thumb${project.thumbnail ? " creator-image-frame demo-normalized-frame" : ""}`} href={`/demo/${projectSlug(project)}`} aria-label={`Open ${project.title}`}>
+              <Link className={`profile-thumb${project.thumbnail ? " creator-image-frame demo-frameless-frame" : ""}`} href={`/demo/${projectSlug(project)}`} aria-label={`Open ${project.title}`}>
                 {project.thumbnail ? <img className="creator-preview" src={project.thumbnail} alt={`Preview of ${project.title}`} /> : <><div className="browser-chrome"><span /><span /><span /><b>{project.title.toLowerCase()}.app</b></div><ProjectPreview type={project.preview} title={project.title} /></>}
               </Link>
               <div className="profile-project-caption"><strong><Link href={`/demo/${projectSlug(project)}`}>{project.title}</Link></strong><small>{project.description}</small></div>

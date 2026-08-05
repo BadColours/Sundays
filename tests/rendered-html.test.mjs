@@ -120,16 +120,11 @@ test("all image thumbnails use one frameless contain model", async () => {
   assert.match(styles, /\.profile-projects \.profile-thumb\.creator-image-frame::after\{content:none/);
 });
 
-test("demo thumbnails are normalized before they reach the gallery", async () => {
-  const [fixture, styles, normalizer] = await Promise.all([
+test("demo thumbnails render full bleed without a generated frame", async () => {
+  const [fixture, styles] = await Promise.all([
     readFile(new URL("../app/fixtures/demoGallery.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
-    readFile(new URL("../scripts/normalize-demo-thumbnails.mjs", import.meta.url), "utf8"),
   ]);
-  assert.match(fixture, /\/explore-thumbs\/normalized\//);
-  assert.match(styles, /\.creator-image-frame\.demo-normalized-frame\{padding:0!important/);
-  assert.match(normalizer, /const canvasSize = 800/);
-  assert.match(normalizer, /const safeArea = 52/);
-  assert.match(normalizer, /fit: "contain"/);
-  assert.doesNotMatch(normalizer, /fit: "cover"/);
+  assert.doesNotMatch(fixture, /\/explore-thumbs\/normalized\//);
+  assert.match(styles, /\.creator-image-frame\.demo-frameless-frame\{padding:0!important;background:transparent!important/);
 });
