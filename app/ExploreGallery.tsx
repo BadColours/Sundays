@@ -60,14 +60,9 @@ export function ExploreGallery({ featuredOnly = false }: { featuredOnly?: boolea
       <div className="project-grid">
         {shownProjects.map((project) => (
           <article className="project-card" key={project.title}>
-            <Link className={`preview-frame ${project.color}${project.thumbnail && !featuredOnly ? " creator-image-frame" : ""}`} href={`/demo/${projectSlug(project)}`} aria-label={`Open ${project.title}`}>
-              {!featuredOnly ? (
-                project.thumbnail ? <img className="creator-preview explore-curated-preview" src={project.thumbnail} alt={`Preview of ${project.title}`} /> : <ProjectPreview type={project.preview} title={project.title} />
-              ) : project.thumbnail ? (
-                <>
-                  <div className="browser-chrome"><span /><span /><span /><b>{project.title.toLowerCase()}.app</b></div>
-                  <img className="creator-preview editorial-preview" src={project.thumbnail} alt={`Preview of ${project.title}`} />
-                </>
+            <Link className={`preview-frame ${project.color}${project.thumbnail ? " creator-image-frame" : ""}`} href={`/demo/${projectSlug(project)}`} aria-label={`Open ${project.title}`}>
+              {project.thumbnail ? (
+                <img className="creator-preview" src={project.thumbnail} alt={`Preview of ${project.title}`} />
               ) : (
                 <>
                   <div className="browser-chrome"><span /><span /><span /><b>{project.title.toLowerCase()}.app</b></div>
