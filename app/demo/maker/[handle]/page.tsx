@@ -14,7 +14,7 @@ export default async function DemoMakerPage({ params }: { params: Promise<{ hand
   return (
     <main className="profile">
       <SiteNav demo />
-      <section className="profile-hero shell demo-profile-hero">
+      <section id="content" tabIndex={-1} className="profile-hero shell demo-profile-hero">
         <div className="profile-index">DEMO PROFILE / @{maker.handle}</div>
         <div className="profile-avatar">{initials}</div>
         <div className="profile-title"><h1>{maker.maker}</h1></div>

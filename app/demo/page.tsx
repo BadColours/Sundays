@@ -6,7 +6,7 @@ export default function DemoHomePage() {
   return (
     <main>
       <SiteNav demo />
-      <section className="projects shell" id="work">
+      <section id="content" tabIndex={-1} className="projects shell">
         <div className="section-head">
           <div>
             <span className="section-number">DEMO / 001—006</span>

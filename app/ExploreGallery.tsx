@@ -5,8 +5,8 @@ import Link from "next/link";
 import { ProjectPreview } from "./ProjectPreview";
 import { galleryProjects, projectSlug } from "./fixtures/demoGallery";
 
-const types = ["All", "Navigation", "Audio", "Tools"] as const;
-const exploreCatalogue = galleryProjects.slice(6);
+const types = ["All", "Games", "Navigation", "Audio", "Tools"] as const;
+const exploreCatalogue = galleryProjects;
 const pageSize = 12;
 
 function shuffleProjects(projects: typeof galleryProjects) {
@@ -37,14 +37,13 @@ export function ExploreGallery({ featuredOnly = false }: { featuredOnly?: boolea
   return (
     <>
       {!featuredOnly && (
-        <div className="explore-tabs" role="tablist" aria-label="Browse by app type">
+        <div className="explore-tabs" role="group" aria-label="Browse by app type">
           {types.map((type) => (
             <button
               className={activeType === type ? "active" : ""}
               key={type}
               type="button"
-              role="tab"
-              aria-selected={activeType === type}
+              aria-pressed={activeType === type}
               onClick={() => { setActiveType(type); setVisibleCount(pageSize); }}
             >
               {type} <span>{type === "All" ? exploreProjects.length : exploreProjects.filter((project) => project.type === type).length}</span>
@@ -53,12 +52,13 @@ export function ExploreGallery({ featuredOnly = false }: { featuredOnly?: boolea
           <button className="shuffle-tab" type="button" onClick={shuffleExplore}>Shuffle ↻</button>
         </div>
       )}
+      {!featuredOnly && <p className="sr-only" role="status">Showing {shownProjects.length} of {visibleProjects.length} projects. Filter: {activeType}.</p>}
       <div className="project-grid">
         {shownProjects.map((project) => (
           <article className="project-card" key={project.title}>
             <Link className={`preview-frame ${project.color}${project.thumbnail ? " creator-image-frame demo-frameless-frame" : ""}`} href={`/demo/${projectSlug(project)}`} aria-label={`Open ${project.title}`}>
               {project.thumbnail ? (
-                <img className="creator-preview demo-edge-bleed" src={project.thumbnail} alt={`Preview of ${project.title}`} />
+                <img className="creator-preview demo-edge-bleed" loading="lazy" decoding="async" src={project.thumbnail} alt={`Preview of ${project.title}`} />
               ) : (
                 <>
                   <div className="browser-chrome"><span /><span /><span /><b>{project.title.toLowerCase()}.app</b></div>
@@ -68,7 +68,7 @@ export function ExploreGallery({ featuredOnly = false }: { featuredOnly?: boolea
             </Link>
             <div className={`project-meta${featuredOnly ? "" : " without-number"}`}>
               {featuredOnly && <span className="project-number">{project.number}</span>}
-              <div className="project-copy"><h3><Link href={`/demo/${projectSlug(project)}`}>{project.title}</Link></h3><Link className="project-maker" href={`/demo/maker/${project.handle}`}>{project.maker}</Link><p>{project.description}</p></div>
+              <div className="project-copy"><h2><Link href={`/demo/${projectSlug(project)}`}>{project.title}</Link></h2><Link className="project-maker" href={`/demo/maker/${project.handle}`}>{project.maker}</Link><p>{project.description}</p></div>
             </div>
           </article>
         ))}

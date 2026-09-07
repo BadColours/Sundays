@@ -1,3 +1,4 @@
+import { CreatorAvatar } from "../../CreatorAvatar";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -18,16 +19,15 @@ export async function generateMetadata({ params }: { params: Promise<{ handle: s
 
 export default async function MakerPage({ params }: { params: Promise<{ handle: string }> }) {
   const { handle } = await params;
-  let creator;
-  try { creator = await getCreatorByHandle(handle); } catch { creator = null; }
+  const creator = await getCreatorByHandle(handle);
   if (!creator) notFound();
   const projects = await listVisibleProjectsForCreator(creator.id);
   return (
     <main className="profile">
       <SiteNav />
-      <section className="profile-hero shell mvp-profile-hero">
+      <section id="content" tabIndex={-1} className="profile-hero shell mvp-profile-hero">
         <div className="profile-index">MAKER / @{creator.github_handle}</div>
-        <img className="github-avatar-large" src={creator.avatar_url} alt="" />
+        <CreatorAvatar className="github-avatar-large" src={creator.avatar_url} name={creator.display_name} />
         <div className="profile-title"><h1>{creator.display_name}</h1><a className="text-link" href={creator.github_profile_url} target="_blank" rel="noopener noreferrer">GitHub profile ↗</a></div>
       </section>
       <section className="profile-work shell">

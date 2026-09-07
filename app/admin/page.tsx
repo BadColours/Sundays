@@ -1,4 +1,4 @@
-import { listOpenReports, listProjectsForModeration, type Project, type ProjectReport } from "../../db/repository";
+import { listOpenReports, listProjectsForModeration } from "../../db/repository";
 import { currentCreator, githubAuthConfigured, isAdmin } from "../../lib/auth";
 import { ProjectThumbnail } from "../ProjectThumbnail";
 import { SiteNav } from "../SiteNav";
@@ -7,11 +7,9 @@ export const dynamic = "force-dynamic";
 
 export default async function AdminPage() {
   const creator = await currentCreator();
-  if (!creator) return <main><SiteNav /><section className="mvp-page shell"><div className="signin-panel"><div><h1>Administrator sign-in</h1><p>Use an allowlisted GitHub identity to review submissions.</p></div>{githubAuthConfigured() && <a className="mvp-button primary" href="/api/auth/github/start?return_to=%2Fadmin">Continue with GitHub</a>}</div></section></main>;
+  if (!creator) return <main><SiteNav /><section id="content" tabIndex={-1} className="mvp-page shell"><div className="signin-panel"><div><h1>Administrator sign-in</h1><p>Use an allowlisted GitHub identity to review submissions.</p></div>{githubAuthConfigured() && <a className="mvp-button primary" href="/api/auth/github/start?return_to=%2Fadmin">Continue with GitHub</a>}</div></section></main>;
   if (!isAdmin(creator)) return <main><SiteNav /><section className="mvp-page shell"><div className="form-notice error">This GitHub identity is not authorized to moderate Sundays.</div></section></main>;
-  let projects: Project[] = [];
-  let reports: ProjectReport[] = [];
-  try { [projects, reports] = await Promise.all([listProjectsForModeration(), listOpenReports()]); } catch { projects = []; reports = []; }
+  const [projects,reports] = await Promise.all([listProjectsForModeration(),listOpenReports()]);
   return (
     <main>
       <SiteNav />
@@ -33,9 +31,9 @@ export default async function AdminPage() {
             {projects.map((project) => (
               <article className="review-card" key={project.id}>
                 <div className="review-thumb"><ProjectThumbnail project={project} /></div>
-                <div className="review-copy"><div className="review-statuses"><span className={`status-chip status-${project.moderation_status}`}>{project.moderation_status}</span><span className={`status-chip verification-${project.verification_status}`}>{project.verification_status}</span><span className={`status-chip link-${project.last_check_status}`}>link: {project.last_check_status}</span></div><h2>{project.title}</h2><p>{project.short_description}</p><p><a href={project.github_profile_url} target="_blank" rel="noopener noreferrer">{project.display_name} · @{project.github_handle}</a></p>{project.repository_url && <a className="text-link" href={project.repository_url} target="_blank" rel="noopener noreferrer">Open repository ↗</a>}<a className="text-link" href={project.live_url} target="_blank" rel="noopener noreferrer">Open live project safely ↗</a>{project.last_checked_at && <small>Last checked {new Date(project.last_checked_at).toLocaleString()}</small>}</div>
+                <div className="review-copy"><div className="review-statuses"><span className={`status-chip status-${project.moderation_status}`}>{project.moderation_status}</span><span className={`status-chip verification-${project.verification_status}`}>{project.verification_status}</span><span className={`status-chip link-${project.last_check_status}`}>link: {project.last_check_status}</span></div><h2>{project.title}</h2><p>{project.short_description}</p><p><a href={project.github_profile_url} target="_blank" rel="noopener noreferrer">{project.display_name} · @{project.github_handle}</a></p>{project.repository_url && <a className="text-link" href={project.repository_url} target="_blank" rel="noopener noreferrer">Open repository ↗</a>}<a className="text-link" href={project.live_url} target="_blank" rel="noopener noreferrer">Open live project ↗</a>{project.last_checked_at && <small>Last checked {new Date(project.last_checked_at).toLocaleString()}</small>}</div>
                 <form className="review-actions" action={`/api/admin/projects/${project.id}`} method="post">
-                  <label>Private review note<textarea name="note" rows={3} maxLength={500} defaultValue={project.moderation_note ?? ""} /></label>
+                  <label>Review note · visible to the creator<textarea name="note" rows={3} maxLength={500} defaultValue={project.moderation_note ?? ""} /></label>
                   <div>
                     {project.moderation_status === "submitted" && <><button name="action" value="approve" type="submit">Approve</button><button name="action" value="decline" type="submit">Decline</button></>}
                     {project.moderation_status === "approved" && <button name="action" value="unavailable" type="submit">Mark unavailable</button>}

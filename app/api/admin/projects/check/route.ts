@@ -1,9 +1,12 @@
+import { mutationGuard } from "../../../../../lib/request-security";
 import { NextRequest, NextResponse } from "next/server";
 import { listProjectsForHealthCheck } from "../../../../../db/repository";
 import { currentCreator, isAdmin } from "../../../../../lib/auth";
 import { checkProjectHealth } from "../../../../../lib/link-health";
 
 export async function POST(request: NextRequest) {
+  const rejected = mutationGuard(request);
+  if (rejected) return rejected;
   const creator = await currentCreator();
   if (!isAdmin(creator)) return new NextResponse("Forbidden", { status: 403 });
   const projects = await listProjectsForHealthCheck();

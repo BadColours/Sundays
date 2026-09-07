@@ -10,8 +10,8 @@ export default async function DemoAppPage({ params }: { params: Promise<{ handle
 
   return (
     <main className="demo-app-stage">
-      <Link className="demo-app-back" href="/demo/explore">← demo gallery</Link>
-      <div className={`demo-app-surface${project.thumbnail ? " image" : ""}`}>
+      <header className="demo-app-header"><Link href="/demo/explore">← Demo gallery</Link><h1>{project.title}</h1><Link href={`/demo/maker/${project.handle}`}>{project.maker} ↗</Link><p>Static concept preview · not a working application</p></header>
+      <div id="content" className={`demo-app-surface${project.thumbnail ? " image" : ""}`}>
         {project.thumbnail
           ? <img className="demo-edge-bleed" src={project.thumbnail} alt={`${project.title} application`} />
           : <ProjectPreview type={project.preview} title={project.title} />}

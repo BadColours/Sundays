@@ -8,7 +8,11 @@ export function PreviewStatusRefresh({ active }: { active: boolean }) {
 
   useEffect(() => {
     if (!active) return;
-    const interval = window.setInterval(() => router.refresh(), 3000);
+    const started = Date.now();
+    const interval = window.setInterval(() => {
+      if (Date.now() - started > 90_000) { window.clearInterval(interval); return; }
+      if (document.visibilityState === "visible" && !document.activeElement?.closest("form")) router.refresh();
+    }, 5000);
     return () => window.clearInterval(interval);
   }, [active, router]);
 

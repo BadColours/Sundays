@@ -20,11 +20,7 @@ export async function currentCreator(): Promise<Creator | null> {
   const cookieStore = await cookies();
   const rawToken = cookieStore.get(SESSION_COOKIE)?.value;
   if (!rawToken) return null;
-  try {
-    return await getCreatorForSession(await sha256(rawToken));
-  } catch {
-    return null;
-  }
+  return await getCreatorForSession(await sha256(rawToken));
 }
 
 export async function requireCreator(returnTo = "/dashboard"): Promise<Creator> {

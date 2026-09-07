@@ -1,19 +1,23 @@
-import { NextRequest, NextResponse } from "next/server";
+import { formRedirect, formFailure } from "../../../lib/form-response";
+import { mutationGuard, readBoundedFormData } from "../../../lib/request-security";
+import { NextRequest } from "next/server";
 import { waitUntil } from "cloudflare:workers";
 import { createProject } from "../../../db/repository";
 import { currentCreator } from "../../../lib/auth";
-import { verifyProjectFields, formErrorUrl } from "../../../lib/project-input";
+import { verifyProjectFields } from "../../../lib/project-input";
 import { captureProjectThumbnail } from "../../../lib/thumbnails";
 
 export async function POST(request: NextRequest) {
+  const rejected = mutationGuard(request);
+  if (rejected) return rejected;
   const creator = await currentCreator();
-  if (!creator) return NextResponse.redirect(new URL("/submit?error=signin_required", request.url), 303);
+  if (!creator) return formRedirect(request,"/join?return_to=%2Fsubmit");
   try {
-    const input = await verifyProjectFields(await request.formData(), creator.github_handle);
+    const input = await verifyProjectFields(await readBoundedFormData(request), creator.github_handle);
     const project = await createProject({ creatorId: creator.id, ...input });
     waitUntil(captureProjectThumbnail(project.id));
-    return NextResponse.redirect(new URL(`/dashboard?submitted=${encodeURIComponent(project.id)}`, request.url), 303);
+    return formRedirect(request,`/dashboard?submitted=${encodeURIComponent(project.id)}`);
   } catch (error) {
-    return NextResponse.redirect(new URL(formErrorUrl("/submit", error), request.url), 303);
+    return formFailure(request,"/submit",error);
   }
 }

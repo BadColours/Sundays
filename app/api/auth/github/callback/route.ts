@@ -8,18 +8,20 @@ export const dynamic = "force-dynamic";
 type GitHubProfile = { id: number; login: string; name: string | null; avatar_url: string; html_url: string };
 
 export async function GET(request: NextRequest) {
+  try {
   const runtime = bindings();
   const code = request.nextUrl.searchParams.get("code");
   const state = request.nextUrl.searchParams.get("state");
   const stateCookie = request.cookies.get(OAUTH_STATE_COOKIE)?.value;
   if (!code || !state || !stateCookie || state !== stateCookie || !runtime.GITHUB_CLIENT_ID || !runtime.GITHUB_CLIENT_SECRET) {
-    return NextResponse.redirect(new URL("/submit?error=github_auth_failed", request.url));
+    return NextResponse.redirect(new URL("/join?error=github_auth_failed", request.url));
   }
   const returnTo = await consumeOAuthState(await sha256(state));
-  if (!returnTo) return NextResponse.redirect(new URL("/submit?error=github_auth_expired", request.url));
+  if (!returnTo) return NextResponse.redirect(new URL("/join?error=github_auth_expired", request.url));
 
   const tokenResponse = await fetch("https://github.com/login/oauth/access_token", {
     method: "POST",
+    signal: AbortSignal.timeout(8_000),
     headers: { accept: "application/json", "content-type": "application/json" },
     body: JSON.stringify({
       client_id: runtime.GITHUB_CLIENT_ID,
@@ -29,12 +31,13 @@ export async function GET(request: NextRequest) {
     }),
   });
   const tokenPayload = await tokenResponse.json() as { access_token?: string; error?: string };
-  if (!tokenResponse.ok || !tokenPayload.access_token) return NextResponse.redirect(new URL("/submit?error=github_auth_failed", request.url));
+  if (!tokenResponse.ok || !tokenPayload.access_token) return NextResponse.redirect(new URL("/join?error=github_auth_failed", request.url));
 
   const profileResponse = await fetch("https://api.github.com/user", {
+    signal: AbortSignal.timeout(8_000),
     headers: { authorization: `Bearer ${tokenPayload.access_token}`, accept: "application/vnd.github+json", "user-agent": "Sundays-Gallery" },
   });
-  if (!profileResponse.ok) return NextResponse.redirect(new URL("/submit?error=github_profile_failed", request.url));
+  if (!profileResponse.ok) return NextResponse.redirect(new URL("/join?error=github_profile_failed", request.url));
   const profile = await profileResponse.json() as GitHubProfile;
   const creator = await upsertCreator({
     githubId: String(profile.id),
@@ -56,4 +59,9 @@ export async function GET(request: NextRequest) {
     maxAge: 30 * 24 * 60 * 60,
   });
   return response;
+  } catch {
+    const response = NextResponse.redirect(new URL("/join?error=github_auth_failed", request.url));
+    response.cookies.delete(OAUTH_STATE_COOKIE);
+    return response;
+  }
 }

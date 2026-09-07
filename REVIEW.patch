@@ -1,0 +1,2562 @@
+--- /dev/null
++++ b/.env.example
+@@ -0,0 +1,10 @@
++# For Cloudflare local development, copy this to .dev.vars.
++# Use a separate GitHub OAuth app for localhost; never reuse production secrets.
++APP_ORIGIN=http://localhost:3007
++GITHUB_CLIENT_ID=
++GITHUB_CLIENT_SECRET=
++ADMIN_GITHUB_HANDLES=
++# Optional. The existing default is https://webshot.site/api/capture.
++# Custom capture services must isolate private networks, redirects and subresources.
++SCREENSHOT_API_URL=
++SCREENSHOT_API_TOKEN=
+--- a/.gitignore
++++ b/.gitignore
+@@ -41,3 +41,7 @@
+ /.wrangler/
+ /outputs/
+ /work/
++
++# Local Cloudflare secrets and review state
++.dev.vars*
++!.env.example
+--- /dev/null
++++ b/AUDIT.md
+@@ -0,0 +1,59 @@
++# Sundays product review — September 7, 2026
++
++## Scope and provenance
++
++Reviewed the published homepage and `/demo`, live Explore, Archive, About, login, submission entry, dashboard entry, and demo creator profile in the browser. Inspected all Sundays application routes, the SQL repository and original migrations, authentication, capture/storage, report/moderation code, and build/hosting configuration.
++
++The parent checkout currently contains a Freedom Atlas homepage, a Schoolwise package/hosting identity, and uncommitted work. The last Sundays-only source revision is `37359b0` (saved Sundays version 36). The latest saved Sundays version metadata points at a later Schoolwise revision (`dd48a32`), while the live pages observed still render Sundays. A saved version number alone is not evidence that its artifact matches this product. This review is based on the intact Sundays source and uses its verified Site ID; nothing in the parent checkout was overwritten.
++
++## Fixed product problems
++
++| Area | Before | Local upgrade |
++| --- | --- | --- |
++| Mobile navigation | Login/account actions disappeared below 620px; all account buttons disappeared below 520px. | Account access remains visible, with a second navigation row and usable touch targets. Active routes expose `aria-current`. |
++| Gallery/data | Development silently showed fictional fixtures on live routes; database errors became empty collections. | Live and demo routes have consistent behavior in every environment. Empty collections explain their state; service errors offer recovery. |
++| Project discovery | Project titles and previews both opened the external app, making the existing details/report page hard to discover. | Titles open Sundays project details; previews retain direct creator-site launch. |
++| Archive | Mismatched column counts put arrows on separate rows. Creator and date vanished on mobile. | Explicit responsive columns retain creator, date/category, thumbnail, title, and launch action. |
++| About | Only the headline explained the product. | Headline retained; concise text explains creator ownership, public profiles, separate gallery selection, and GitHub access. |
++| Login | Bare button, invisible/unexplained unavailable state, inconsistent return destination. | Context, accessible unavailable/error states, and validated return paths. Dashboard entry routes through the same login page. |
++| Dashboard | Up to 100 repositories preceded existing work; small labels and unclear hide/edit effects. | Shared projects come first, labels are readable, and hiding/review effects are explicit. Repository fetches time out independently. |
++| Submission/editing | A server validation error redirected away and discarded entered fields. | Enhanced forms retain entries, focus errors, prevent duplicate in-flight submissions, and show pending feedback. |
++| Creator profiles | Oversized fixed hero spacing, narrow name columns, and broken avatars. | Responsive identity block, wrapping long names, preserved project frames, and avatar fallback. |
++| Demo | Explore omitted featured work; Archive omitted most of the catalogue; controls used incomplete tab semantics. | All 56 examples are reachable from both indexes. Category buttons have pressed states and result announcements; pagination and shuffle work. |
++| Demo detail | Static screenshots appeared as if they were working apps, without project or maker context. | Explicit static-concept label, title, maker link, and demo return link. |
++| Thumbnails | Grid sizing could create large blank image areas; source-specific crops cut artwork; broken image URLs had no fallback. | Bounded tracks, centered contain-fit images, no source-specific cropping, readable missing-preview states. Source artwork is unchanged. |
++| Capture lifecycle | Unbounded response bodies, any `image/*` accepted, body read outside timeout, old jobs overwrote newer edits. | Bounded streamed PNG/JPEG/WebP ingestion, signature checks, full-fetch timeout, guarded completion, and stale-result disposal. Retry keeps a usable existing preview when the URL has not changed. |
++| Link health | New and edited URLs were labeled healthy without being checked; screenshot success marked links healthy. | New/edited links remain unchecked. Only the actual link checker establishes health. |
++| Verification | A typed GitHub owner name alone earned a “Verified maker” badge. | New verification requires a public GitHub repository response. UI says “Repository matched” and explicitly does not certify the live site. |
++| Errors | Missing pages used generic framework output; outages could look like missing creators. | Sundays-styled 404/recovery pages, separate demo recovery, and service errors distinct from missing records. |
++
++## Security and implementation
++
++- All write routes reject cross-origin or missing-origin requests before data access. Form bodies are bounded even without a Content-Length header.
++- Project ownership is checked before every owner action, including hide/show; unknown IDs no longer return false success.
++- Public galleries require both approval and profile visibility. Moderation-unavailable projects do not remain visible on creator profiles. A stale admin approval cannot republish a hidden project.
++- OAuth state is consumed with one atomic SQL statement. Provider requests have timeouts and callback exceptions return to sign-in. Sessions remain server-side, hashed, expiring, HttpOnly, and SameSite=Lax.
++- URL guards cover canonicalized/obfuscated loopback, mapped IPv6, shared/reserved networks, credentials, and non-web ports. Link probes check DNS and every redirect. DNS preflight remains a defense layer, not a guarantee against DNS rebinding between validation and fetch.
++- Thumbnail serving restricts storage keys and content types. Worker responses add MIME, referrer, permission, and form/base/object CSP protections; account/API responses are not publicly cacheable.
++- Removed request-time schema creation/alteration. The original migration files and metadata are preserved unchanged.
++- Added keyboard skip navigation, readable form/status text, visible focus, truthful filter semantics, announced save/results/report states, and reduced-motion behavior. Creator artwork retains its own visual language; miniature UI inside preview artwork is not treated as interactive Sundays controls.
++
++## Validation evidence
++
++- TypeScript check: passed.
++- 14 behavior/security/data-integrity tests: passed.
++- 132 HTTP/flow checks: passed, covering 112 public routes, all 56 demo project routes and every demo creator, live/demo navigation boundaries, missing routes, local authenticated dashboard, unauthorized writes, hide/show visibility, R2 serving, validation failures, and report feedback.
++- Production Worker build: passed; default `fetch` export, public assets, and hosting/migrations are present. Seven compiled-Worker routes, authenticated local rendering, D1/R2, private caching, security response headers, and server-side sign-out were also tested. Local credentials, QA records, and the review proxy are absent from the build.
++- Lint: no errors; eight direct-image warnings, intentionally retained for source artwork and R2 previews.
++- Browser checks: desktop at 1280px; mobile at 390px; 320px overflow sweep across 14 key routes; 768px tablet reflow checks. No page-level horizontal overflow found. Visually reviewed gallery, Explore, Archive, About, login, submission error, dashboard, creator profiles, project detail/report, static demo detail, and 404 states. A separate compiled instance with an unavailable database rendered the recovery screen; retry and fallback demo navigation were exercised.
++- Browser interaction: category filtering, pagination, shuffle, multiple-project maker links, private-URL rejection retaining all entered fields, successful local submission, successful edit, and public profile visibility verified.
++
++## Release caveats and decisions
++
++1. This is a local review deliverable. No source commit, push, saved hosted version, deployment, access change, production record mutation, or real-account sign-in was performed.
++2. The published runtime has GitHub credentials, an application origin, and an admin allowlist configured. Their secret values were not copied into this checkout. Complete a staging OAuth round trip and verify cookie/sign-out behavior against the intended origin before release.
++3. The live configuration currently relies on the implicit Webshot default. Local capture failure/retry and R2 serving are tested; the external provider's availability, current contract, network isolation, and successful capture need a staging check. Local sample thumbnails use existing supplied artwork.
++4. Old “verified” database records were not rewritten. A later backfill/recheck should validate those public repository links before treating the historical flag as evidence of a fetch-confirmed match.
++5. Demo people, titles, and images are illustrative. Some supplied screenshots contain different in-image product names than fixture titles (notably Shortcut/Studio Walter). Assets were preserved rather than inventing new creator identities or replacing their aesthetics. Before sending the demo as evidence of real partners, replace fixtures with permissioned real creator records or explicitly present it as a fictional concept gallery.
++6. No WCAG certification or screen-reader audit is claimed. Keyboard semantics, focus, reflow, reduced motion, and visual contrast/readability were reviewed; deeper assistive-technology testing remains a release check.
++7. The SQL gallery query still uses the existing 60-record collection limit and GitHub repository picker uses the existing 100-record page. Current production volume does not hit these limits; add real pagination when actual catalogue size requires it.
+--- a/README.md
++++ b/README.md
+@@ -1,63 +1,61 @@
+-# Sundays
++# Sundays gallery — local partner review
+ 
+-Sundays is a curated gallery for personal software made after hours. Creators keep hosting and control of every application; Sundays stores only creator identity, listing metadata, moderation state, and promotional thumbnails.
++This is an isolated review copy of the Sundays product at Git revision `37359b0` (the last Sundays-only revision). The parent workspace contains other projects and unrelated uncommitted work. Do not deploy or replace it from the parent directory.
+ 
+-## Local development
++No commits, pushes, hosted versions, access changes, or deployments were made for this review.
+ 
+-```bash
+-npm install
+-npm run dev
++## Review locally
++
++- Gallery: http://localhost:3007/
++- Populated demo: http://localhost:3007/demo
++- Fictional creator dashboard: http://localhost:3008/dashboard
++
++The normal routes use local D1 records. `/demo` always uses explicitly fictional fixtures, in both development and production. Sample records are labeled “local sample”; they are not copies of production users or records.
++
++The creator preview on port 3008 is a separate loopback-only development proxy. It uses an expiring session for a fictional creator in the local database. It is not a login bypass in application code and is not included in the Worker build. It exists so a reviewer can exercise forms without a production GitHub account. Sign out revokes the sample session server-side. To resume creator review after signing out, reseed and restart the proxy.
++
++## Run from this directory
++
++Validated here with Node 25.9.0 and npm. Tests require native TypeScript stripping and `module.registerHooks`; keep the existing dependency lockfile. This workspace currently reuses its installed dependencies through a `node_modules` symlink; in a standalone checkout use `npm ci`.
++
++```sh
++npm run db:local
++npm run dev -- --host 127.0.0.1 --port 3007
+ ```
+ 
+-The project uses Cloudflare D1 (`DB`) and R2 (`THUMBNAILS`) through `.openai/hosting.json`. Runtime routes initialize the checked-in schema when a new local binding is empty. Generate migrations after schema changes with:
++For fictional creator review, in separate terminals:
+ 
+-```bash
+-npm run db:generate
++```sh
++npm run review:seed
++npm run review:creator
+ ```
+ 
+-## GitHub OAuth setup
++Seed once, then start the proxy. Reseeding rotates the sample session, so restart the proxy afterward. The sample session expires after 24 hours. These scripts explicitly use local D1/R2 and do not accept a remote flag.
+ 
+-Create a GitHub OAuth App and set:
+-
+-- Homepage URL: the deployed Sundays origin
+-- Authorization callback URL: `https://YOUR-DOMAIN/api/auth/github/callback`
+-- `GITHUB_CLIENT_ID`
+-- `GITHUB_CLIENT_SECRET`
+-- `APP_ORIGIN`
+-
+-Sundays deliberately omits the OAuth `scope` parameter. GitHub is used only for public creator identity; repository access is never requested. Access and refresh tokens are not retained after the public profile is read.
+-
+-Set `ADMIN_GITHUB_HANDLES` to a comma-separated allowlist of GitHub handles permitted to use `/admin`.
+-
+-## Screenshot capture
+-
+-Sundays uses Webshot's public `desktop_viewport` capture endpoint by default and stores the returned image in its own R2 bucket. The public service is suitable for early testing but rate-limited, so production can override it with `SCREENSHOT_API_URL` and `SCREENSHOT_API_TOKEN`.
+-
+-For a custom capture provider, Sundays sends an authenticated `POST` with:
+-
+-```json
+-{
+-  "url": "https://creator-owned.example",
+-  "viewport": { "width": 1440, "height": 1024 },
+-  "output": { "format": "webp", "quality": 82, "width": 1200, "height": 850 },
+-  "security": { "blockPrivateNetworks": true, "maxRedirects": 3 }
+-}
+-```
+-
+-The provider must return raw `image/webp`, `image/png`, or `image/jpeg` bytes, enforce private-network blocking independently, and complete within 50 seconds. `SCREENSHOT_API_TOKEN` is sent as a bearer token when present. New and updated project URLs are captured in the background, and the dashboard refreshes while a preview is processing. Capture failures never prevent profile sharing; the dashboard offers a retry only when automatic capture fails.
+-
+-## Production setup checklist
+-
+-1. Apply the generated D1 migration.
+-2. Configure the `DB` and `THUMBNAILS` bindings through Sites.
+-3. Create the GitHub OAuth App and add the three GitHub/origin variables above.
+-4. Set the administrator handle allowlist.
+-5. Optionally configure a higher-volume screenshot service and token.
+-6. Test sign-in, submission, thumbnail capture/failure, moderation, publication, launch links, and broken-link reports before recruiting creators.
++The ignored `.dev.vars` in this review points thumbnail capture at a deliberately unavailable local endpoint to exercise failure/retry handling without sending projects to a third-party service. Existing sample artwork is stored in local R2. Live capture still requires a staging integration check.
+ 
+ ## Validation
+ 
+-```bash
++```sh
++npm run typecheck
++npm test
++npm run lint
+ npm run build
+-npm test
++node scripts/check-local.mjs
+ ```
++
++The HTTP checks require the development server and seeded local fixtures. They modify only sample records and submit sample reports. The pure tests execute the real repository SQL against an isolated SQLite database and the original migration chain. Lint has no errors; eight existing-pattern image warnings remain because supplied artwork and R2 images are deliberately rendered directly, without requiring a hosted image optimizer.
++
++See [AUDIT.md](AUDIT.md) for the product changes, evidence, and release caveats.
++
++## Deployment contract
++
++The only intended Site is `appgprj_6a6a635771fc8191af1955b18bd07801`, the Sundays gallery at `https://offhours-gallery.badcolours.chatgpt.site`. Its logical bindings remain `DB` and `THUMBNAILS`.
++
++`npm run build` emits `dist/server/index.js` with a default `fetch` handler, public assets under `dist/client`, and hosting/migration metadata under `dist/.openai`. The Sites platform supplies production D1 and R2 resources. Placeholder database IDs and `site-creator-r2` in local Wrangler configuration are local bindings, not production resource IDs.
++
++The three existing Drizzle migration files and snapshots are unchanged. Schema initialization no longer performs DDL in requests; deploy the recorded migration chain before starting a new database. Check existing production migration bookkeeping before a later deployment because older Sundays code also performed runtime schema changes.
++
++Configure GitHub credentials, `APP_ORIGIN`, admin allowlist, and any custom screenshot provider only through hosted runtime settings. `.env.example` lists the keys; never package `.dev.vars`, `.wrangler`, the review proxy, or session files. A custom screenshot provider must enforce private-network isolation for its browser, including redirects and subresources. Sundays' URL checks do not replace isolation inside that third-party browser.
++
++Deployment is intentionally deferred until the user reviews and approves this local version.
+--- /dev/null
++++ b/app/AboutContent.tsx
+@@ -0,0 +1,7 @@
++import Link from "next/link";
++import { SiteNav } from "./SiteNav";
++import { SiteFooter } from "./SiteFooter";
++
++export function AboutContent({ demo = false }: { demo?: boolean }) {
++  return <main><SiteNav active="about" demo={demo} /><section id="content" tabIndex={-1} className="about-page route-page shell"><span className="about-index">{demo ? "DEMO / ABOUT SUNDAYS" : "ABOUT / SUNDAYS"}</span><h1>For people who make things<br className="about-break" /> after they&apos;re done making things.</h1><div className="about-copy"><p>Sundays is a gallery of personal software. Every project lives on its creator’s own site, with its own point of view.</p><div><p>Sign in with GitHub to make a public creator profile and share your work. Projects appear on your profile immediately; the Sundays collection is selected separately.</p><p>We read your public GitHub identity and public repositories. We never request private repository access, copy your code, or host your application.</p><Link href={demo ? "/demo/explore" : "/submit"}>{demo ? "Explore the demo" : "Share a project"} ↗</Link>{demo && <p className="demo-note">These fictional creators and project previews demonstrate the gallery. Demo previews are not working applications.</p>}</div></div></section><SiteFooter demo={demo} /></main>;
++}
+--- /dev/null
++++ b/app/CreatorAvatar.tsx
+@@ -0,0 +1,6 @@
++"use client";
++import { useState } from "react";
++export function CreatorAvatar({ src, name, className = "" }: { src: string | undefined; name: string; className?: string }) {
++  const [failed, setFailed] = useState(false);
++  return src && !failed ? <img className={className} src={src} alt="" ref={node => { if (node?.complete && node.naturalWidth === 0) setFailed(true); }} onError={() => setFailed(true)} /> : <span className={`avatar-fallback ${className}`} aria-hidden="true">{name.split(/\s+/).slice(0,2).map(part=>part[0]).join("").toUpperCase()}</span>;
++}
+--- a/app/ExploreGallery.tsx
++++ b/app/ExploreGallery.tsx
+@@ -5,8 +5,8 @@
+ import { ProjectPreview } from "./ProjectPreview";
+ import { galleryProjects, projectSlug } from "./fixtures/demoGallery";
+ 
+-const types = ["All", "Navigation", "Audio", "Tools"] as const;
+-const exploreCatalogue = galleryProjects.slice(6);
++const types = ["All", "Games", "Navigation", "Audio", "Tools"] as const;
++const exploreCatalogue = galleryProjects;
+ const pageSize = 12;
+ 
+ function shuffleProjects(projects: typeof galleryProjects) {
+@@ -37,14 +37,13 @@
+   return (
+     <>
+       {!featuredOnly && (
+-        <div className="explore-tabs" role="tablist" aria-label="Browse by app type">
++        <div className="explore-tabs" role="group" aria-label="Browse by app type">
+           {types.map((type) => (
+             <button
+               className={activeType === type ? "active" : ""}
+               key={type}
+               type="button"
+-              role="tab"
+-              aria-selected={activeType === type}
++              aria-pressed={activeType === type}
+               onClick={() => { setActiveType(type); setVisibleCount(pageSize); }}
+             >
+               {type} <span>{type === "All" ? exploreProjects.length : exploreProjects.filter((project) => project.type === type).length}</span>
+@@ -53,12 +52,13 @@
+           <button className="shuffle-tab" type="button" onClick={shuffleExplore}>Shuffle ↻</button>
+         </div>
+       )}
++      {!featuredOnly && <p className="sr-only" role="status">Showing {shownProjects.length} of {visibleProjects.length} projects. Filter: {activeType}.</p>}
+       <div className="project-grid">
+         {shownProjects.map((project) => (
+           <article className="project-card" key={project.title}>
+             <Link className={`preview-frame ${project.color}${project.thumbnail ? " creator-image-frame demo-frameless-frame" : ""}`} href={`/demo/${projectSlug(project)}`} aria-label={`Open ${project.title}`}>
+               {project.thumbnail ? (
+-                <img className="creator-preview demo-edge-bleed" src={project.thumbnail} alt={`Preview of ${project.title}`} />
++                <img className="creator-preview demo-edge-bleed" loading="lazy" decoding="async" src={project.thumbnail} alt={`Preview of ${project.title}`} />
+               ) : (
+                 <>
+                   <div className="browser-chrome"><span /><span /><span /><b>{project.title.toLowerCase()}.app</b></div>
+@@ -68,7 +68,7 @@
+             </Link>
+             <div className={`project-meta${featuredOnly ? "" : " without-number"}`}>
+               {featuredOnly && <span className="project-number">{project.number}</span>}
+-              <div className="project-copy"><h3><Link href={`/demo/${projectSlug(project)}`}>{project.title}</Link></h3><Link className="project-maker" href={`/demo/maker/${project.handle}`}>{project.maker}</Link><p>{project.description}</p></div>
++              <div className="project-copy"><h2><Link href={`/demo/${projectSlug(project)}`}>{project.title}</Link></h2><Link className="project-maker" href={`/demo/maker/${project.handle}`}>{project.maker}</Link><p>{project.description}</p></div>
+             </div>
+           </article>
+         ))}
+--- a/app/PreviewStatusRefresh.tsx
++++ b/app/PreviewStatusRefresh.tsx
+@@ -8,7 +8,11 @@
+ 
+   useEffect(() => {
+     if (!active) return;
+-    const interval = window.setInterval(() => router.refresh(), 3000);
++    const started = Date.now();
++    const interval = window.setInterval(() => {
++      if (Date.now() - started > 90_000) { window.clearInterval(interval); return; }
++      if (document.visibilityState === "visible" && !document.activeElement?.closest("form")) router.refresh();
++    }, 5000);
+     return () => window.clearInterval(interval);
+   }, [active, router]);
+ 
+--- /dev/null
++++ b/app/ProjectForm.tsx
+@@ -0,0 +1,32 @@
++"use client";
++import { useEffect, useRef, useState } from "react";
++
++/** Keep entered fields on validation/network failure and prevent double submits. */
++export function ProjectForm({ action, className, children }: { action: string; className: string; children: React.ReactNode }) {
++  const [pending, setPending] = useState(false);
++  const [error, setError] = useState("");
++  const notice = useRef<HTMLDivElement>(null);
++  const inFlight = useRef(false);
++  useEffect(() => { if (error) notice.current?.focus(); }, [error]);
++  return <form action={action} method="post" className={className} aria-busy={pending} onSubmit={async (event) => {
++    event.preventDefault();
++    if (inFlight.current) return;
++    const form = new FormData(event.currentTarget);
++    inFlight.current = true;
++    setPending(true); setError("");
++    try {
++      const response = await fetch(action, { method:"POST", body:form, headers:{accept:"application/json"} });
++      const result = await response.json() as { error?: string; location?: string };
++      if (!response.ok || result.error) throw new Error(result.error ?? "Your changes couldn’t be saved. Please try again.");
++      if (!result.location?.startsWith("/") || result.location.startsWith("//")) throw new Error("Please reload your dashboard to check whether the project was saved.");
++      window.location.assign(result.location);
++    } catch (cause) {
++      setError(cause instanceof Error && !(cause instanceof SyntaxError) ? cause.message : "We couldn’t save your changes. Your entries are still here; please try again.");
++      setPending(false); inFlight.current = false;
++    }
++  }}>
++    {error && <div ref={notice} className="form-notice error" role="alert" tabIndex={-1}>{error}</div>}
++    <fieldset disabled={pending}>{children}</fieldset>
++    {pending && <p className="save-status" role="status">Saving your project…</p>}
++  </form>;
++}
+--- a/app/ProjectPreview.tsx
++++ b/app/ProjectPreview.tsx
+@@ -29,7 +29,7 @@
+   }
+ }
+ 
+-export function ProjectPreview({ type, title }: { type: string; title?: string }) {
++export function ProjectPreview({ type }: { type: string; title?: string }) {
+   if (type.startsWith("mock-")) {
+     const index = Number(type.slice(5)) || 0;
+     return <ExploreAppPreview index={index} />;
+--- a/app/ProjectThumbnail.tsx
++++ b/app/ProjectThumbnail.tsx
+@@ -1,14 +1,10 @@
+-import { thumbnailUrl } from "../lib/thumbnails";
++"use client";
++import { useState } from "react";
++import { thumbnailUrl } from "../lib/thumbnail-url";
+ import type { Project } from "../db/repository";
+-
+ export function ProjectThumbnail({ project, className = "" }: { project: Pick<Project, "title" | "thumbnail_status" | "thumbnail_storage_key">; className?: string }) {
+-  const source = project.thumbnail_status === "ready" ? thumbnailUrl(project.thumbnail_storage_key) : null;
+-  if (source) return <img className={`project-thumbnail ${className}`} src={source} alt={`Preview of ${project.title}`} />;
+-  return (
+-    <div className={`thumbnail-fallback ${className}`} role="img" aria-label={`${project.title} thumbnail ${project.thumbnail_status === "pending" ? "is processing" : "is unavailable"}`}>
+-      <span>{project.thumbnail_status === "pending" ? "CAPTURING" : "CAPTURE NEEDED"}</span>
+-      <strong>{project.title.slice(0, 2).toUpperCase()}</strong>
+-      <i /><i /><i />
+-    </div>
+-  );
++  const [failedSource, setFailedSource] = useState<string | null>(null);
++  const source = thumbnailUrl(project.thumbnail_storage_key);
++  if (source && source !== failedSource) return <img className={`project-thumbnail ${className}`} src={source} alt={`Preview of ${project.title}`} loading="lazy" decoding="async" ref={node => { if (node?.complete && node.naturalWidth === 0) setFailedSource(source); }} onError={() => setFailedSource(source)} />;
++  return <div className={`thumbnail-fallback ${className}`} role="img" aria-label={`Preview of ${project.title} ${project.thumbnail_status === "pending" ? "is being prepared" : "is unavailable"}`}><strong>{project.title}</strong><span>{project.thumbnail_status === "pending" ? "Preview is being prepared" : "Preview unavailable"}</span></div>;
+ }
+--- a/app/PublicGallery.tsx
++++ b/app/PublicGallery.tsx
+@@ -3,7 +3,7 @@
+ import { ProjectThumbnail } from "./ProjectThumbnail";
+ 
+ export function PublicGallery({ projects }: { projects: Project[] }) {
+-  if (projects.length === 0) return null;
++  if (projects.length === 0) return <div className="gallery-empty"><p>No projects in the collection yet.</p><Link href="/submit">Share a project ↗</Link></div>;
+   return (
+     <div className="project-grid public-project-grid">
+       {projects.map((project) => (
+@@ -14,8 +14,8 @@
+           </a>
+           <div className="project-meta without-number">
+             <div className="project-copy">
+-              <h3><a href={project.live_url} target="_blank" rel="noopener noreferrer">{project.title}</a></h3>
+-              <div className="project-maker-line"><Link className="project-maker" href={`/maker/${project.github_handle}`}>{project.display_name}</Link>{project.verification_status === "verified" && <span className="verification-mark">Verified</span>}</div>
++              <h2><Link href={`/project/${project.slug}`}>{project.title}</Link></h2>
++              <div className="project-maker-line"><Link className="project-maker" href={`/maker/${project.github_handle}`}>{project.display_name}</Link>{project.verification_status === "verified" && <span className="verification-mark" title="This repository belongs to the creator’s GitHub account. This does not verify the live site.">Repository matched</span>}</div>
+               <p>{project.short_description}</p>
+             </div>
+             <div className="project-side">
+--- /dev/null
++++ b/app/SiteFooter.tsx
+@@ -0,0 +1,5 @@
++import Link from "next/link";
++
++export function SiteFooter({ demo = false }: { demo?: boolean }) {
++  return <footer className="footer minimal-footer shell"><Link className="wordmark" href={demo ? "/demo" : "/"}>sundays<span>.</span><small>offhours</small></Link><small>{demo ? "Demo" : "© 2026"}</small></footer>;
++}
+--- a/app/SiteNav.tsx
++++ b/app/SiteNav.tsx
+@@ -2,20 +2,21 @@
+ import { currentCreator, isAdmin } from "../lib/auth";
+ 
+ export async function SiteNav({ active, demo = false }: { active?: "explore" | "archive" | "about"; demo?: boolean }) {
+-  const creator = await currentCreator();
++  const creator = demo ? null : await currentCreator();
+   return (
+     <nav className="nav shell" aria-label="Primary navigation">
++      <a className="skip-link" href="#content">Skip to content</a>
+       <Link className="wordmark" href={demo ? "/demo" : "/"}>sundays<span>.</span><small>offhours</small></Link>
+       <div className="nav-tabs">
+-        <Link className={active === "explore" ? "active" : ""} href={demo ? "/demo/explore" : "/explore"}>Explore</Link>
+-        <Link className={active === "archive" ? "active" : ""} href={demo ? "/demo/archive" : "/archive"}>Archive</Link>
+-        <Link className={active === "about" ? "active" : ""} href={demo ? "/demo/about" : "/about"}>About</Link>
++        <Link aria-current={active === "explore" ? "page" : undefined} className={active === "explore" ? "active" : ""} href={demo ? "/demo/explore" : "/explore"}>Explore</Link>
++        <Link aria-current={active === "archive" ? "page" : undefined} className={active === "archive" ? "active" : ""} href={demo ? "/demo/archive" : "/archive"}>Archive</Link>
++        <Link aria-current={active === "about" ? "page" : undefined} className={active === "about" ? "active" : ""} href={demo ? "/demo/about" : "/about"}>About</Link>
+       </div>
+       <div className="nav-account">
+-        {creator ? (
++        {demo ? <Link className="github-button" href="/">Live gallery ↗</Link> : creator ? (
+           <>
+             {isAdmin(creator) && <Link href="/admin">Review</Link>}
+-            <Link className="github-button" href="/dashboard">@{creator.github_handle}</Link>
++            <Link className="github-button" href="/dashboard" title={`Dashboard for @${creator.github_handle}`}>Dashboard</Link>
+           </>
+         ) : <Link className="github-button github-login-nav" href="/join"><img src="https://github.githubassets.com/favicons/favicon.svg" alt="" />Log in</Link>}
+       </div>
+--- a/app/about/page.tsx
++++ b/app/about/page.tsx
+@@ -1,13 +1,2 @@
+-import { SiteNav } from "../SiteNav";
+-
+-export default function AboutPage() {
+-  return (
+-    <main>
+-      <SiteNav active="about" />
+-      <section className="about-page route-page shell">
+-        <span className="about-index">ABOUT / SUNDAYS</span>
+-        <h1>For people who make things<br className="about-break" /> after they&apos;re done making things.</h1>
+-      </section>
+-    </main>
+-  );
+-}
++import { AboutContent } from "../AboutContent";
++export default function AboutPage() { return <AboutContent />; }
+--- a/app/admin/page.tsx
++++ b/app/admin/page.tsx
+@@ -1,4 +1,4 @@
+-import { listOpenReports, listProjectsForModeration, type Project, type ProjectReport } from "../../db/repository";
++import { listOpenReports, listProjectsForModeration } from "../../db/repository";
+ import { currentCreator, githubAuthConfigured, isAdmin } from "../../lib/auth";
+ import { ProjectThumbnail } from "../ProjectThumbnail";
+ import { SiteNav } from "../SiteNav";
+@@ -7,11 +7,9 @@
+ 
+ export default async function AdminPage() {
+   const creator = await currentCreator();
+-  if (!creator) return <main><SiteNav /><section className="mvp-page shell"><div className="signin-panel"><div><h1>Administrator sign-in</h1><p>Use an allowlisted GitHub identity to review submissions.</p></div>{githubAuthConfigured() && <a className="mvp-button primary" href="/api/auth/github/start?return_to=%2Fadmin">Continue with GitHub</a>}</div></section></main>;
++  if (!creator) return <main><SiteNav /><section id="content" tabIndex={-1} className="mvp-page shell"><div className="signin-panel"><div><h1>Administrator sign-in</h1><p>Use an allowlisted GitHub identity to review submissions.</p></div>{githubAuthConfigured() && <a className="mvp-button primary" href="/api/auth/github/start?return_to=%2Fadmin">Continue with GitHub</a>}</div></section></main>;
+   if (!isAdmin(creator)) return <main><SiteNav /><section className="mvp-page shell"><div className="form-notice error">This GitHub identity is not authorized to moderate Sundays.</div></section></main>;
+-  let projects: Project[] = [];
+-  let reports: ProjectReport[] = [];
+-  try { [projects, reports] = await Promise.all([listProjectsForModeration(), listOpenReports()]); } catch { projects = []; reports = []; }
++  const [projects,reports] = await Promise.all([listProjectsForModeration(),listOpenReports()]);
+   return (
+     <main>
+       <SiteNav />
+@@ -33,9 +31,9 @@
+             {projects.map((project) => (
+               <article className="review-card" key={project.id}>
+                 <div className="review-thumb"><ProjectThumbnail project={project} /></div>
+-                <div className="review-copy"><div className="review-statuses"><span className={`status-chip status-${project.moderation_status}`}>{project.moderation_status}</span><span className={`status-chip verification-${project.verification_status}`}>{project.verification_status}</span><span className={`status-chip link-${project.last_check_status}`}>link: {project.last_check_status}</span></div><h2>{project.title}</h2><p>{project.short_description}</p><p><a href={project.github_profile_url} target="_blank" rel="noopener noreferrer">{project.display_name} · @{project.github_handle}</a></p>{project.repository_url && <a className="text-link" href={project.repository_url} target="_blank" rel="noopener noreferrer">Open repository ↗</a>}<a className="text-link" href={project.live_url} target="_blank" rel="noopener noreferrer">Open live project safely ↗</a>{project.last_checked_at && <small>Last checked {new Date(project.last_checked_at).toLocaleString()}</small>}</div>
++                <div className="review-copy"><div className="review-statuses"><span className={`status-chip status-${project.moderation_status}`}>{project.moderation_status}</span><span className={`status-chip verification-${project.verification_status}`}>{project.verification_status}</span><span className={`status-chip link-${project.last_check_status}`}>link: {project.last_check_status}</span></div><h2>{project.title}</h2><p>{project.short_description}</p><p><a href={project.github_profile_url} target="_blank" rel="noopener noreferrer">{project.display_name} · @{project.github_handle}</a></p>{project.repository_url && <a className="text-link" href={project.repository_url} target="_blank" rel="noopener noreferrer">Open repository ↗</a>}<a className="text-link" href={project.live_url} target="_blank" rel="noopener noreferrer">Open live project ↗</a>{project.last_checked_at && <small>Last checked {new Date(project.last_checked_at).toLocaleString()}</small>}</div>
+                 <form className="review-actions" action={`/api/admin/projects/${project.id}`} method="post">
+-                  <label>Private review note<textarea name="note" rows={3} maxLength={500} defaultValue={project.moderation_note ?? ""} /></label>
++                  <label>Review note · visible to the creator<textarea name="note" rows={3} maxLength={500} defaultValue={project.moderation_note ?? ""} /></label>
+                   <div>
+                     {project.moderation_status === "submitted" && <><button name="action" value="approve" type="submit">Approve</button><button name="action" value="decline" type="submit">Decline</button></>}
+                     {project.moderation_status === "approved" && <button name="action" value="unavailable" type="submit">Mark unavailable</button>}
+--- a/app/api/admin/projects/[id]/route.ts
++++ b/app/api/admin/projects/[id]/route.ts
+@@ -1,3 +1,4 @@
++import { mutationGuard, readBoundedFormData } from "../../../../../lib/request-security";
+ import { NextRequest, NextResponse } from "next/server";
+ import { moderateProject } from "../../../../../db/repository";
+ import { currentCreator, isAdmin } from "../../../../../lib/auth";
+@@ -5,10 +6,12 @@
+ const actions = new Set(["approve", "decline", "unavailable", "restore"]);
+ 
+ export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
++  const rejected = mutationGuard(request);
++  if (rejected) return rejected;
+   const creator = await currentCreator();
+   if (!isAdmin(creator)) return new NextResponse("Forbidden", { status: 403 });
+   const { id } = await params;
+-  const form = await request.formData();
++  const form = await readBoundedFormData(request);
+   const action = String(form.get("action") ?? "");
+   if (!actions.has(action)) return new NextResponse("Invalid action", { status: 400 });
+   const note = String(form.get("note") ?? "").trim().slice(0, 500) || null;
+--- a/app/api/admin/projects/check/route.ts
++++ b/app/api/admin/projects/check/route.ts
+@@ -1,9 +1,12 @@
++import { mutationGuard } from "../../../../../lib/request-security";
+ import { NextRequest, NextResponse } from "next/server";
+ import { listProjectsForHealthCheck } from "../../../../../db/repository";
+ import { currentCreator, isAdmin } from "../../../../../lib/auth";
+ import { checkProjectHealth } from "../../../../../lib/link-health";
+ 
+ export async function POST(request: NextRequest) {
++  const rejected = mutationGuard(request);
++  if (rejected) return rejected;
+   const creator = await currentCreator();
+   if (!isAdmin(creator)) return new NextResponse("Forbidden", { status: 403 });
+   const projects = await listProjectsForHealthCheck();
+--- a/app/api/admin/reports/[id]/route.ts
++++ b/app/api/admin/reports/[id]/route.ts
+@@ -1,3 +1,4 @@
++import { mutationGuard, readBoundedFormData } from "../../../../../lib/request-security";
+ import { NextRequest, NextResponse } from "next/server";
+ import { resolveProjectReport } from "../../../../../db/repository";
+ import { currentCreator, isAdmin } from "../../../../../lib/auth";
+@@ -5,9 +6,11 @@
+ const actions = new Set(["reviewed", "dismissed", "unavailable"]);
+ 
+ export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
++  const rejected = mutationGuard(request);
++  if (rejected) return rejected;
+   const creator = await currentCreator();
+   if (!isAdmin(creator)) return new NextResponse("Forbidden", { status: 403 });
+-  const form = await request.formData();
++  const form = await readBoundedFormData(request);
+   const action = String(form.get("action") ?? "");
+   if (!actions.has(action)) return new NextResponse("Invalid action", { status: 400 });
+   const { id } = await params;
+--- a/app/api/auth/github/callback/route.ts
++++ b/app/api/auth/github/callback/route.ts
+@@ -8,18 +8,20 @@
+ type GitHubProfile = { id: number; login: string; name: string | null; avatar_url: string; html_url: string };
+ 
+ export async function GET(request: NextRequest) {
++  try {
+   const runtime = bindings();
+   const code = request.nextUrl.searchParams.get("code");
+   const state = request.nextUrl.searchParams.get("state");
+   const stateCookie = request.cookies.get(OAUTH_STATE_COOKIE)?.value;
+   if (!code || !state || !stateCookie || state !== stateCookie || !runtime.GITHUB_CLIENT_ID || !runtime.GITHUB_CLIENT_SECRET) {
+-    return NextResponse.redirect(new URL("/submit?error=github_auth_failed", request.url));
++    return NextResponse.redirect(new URL("/join?error=github_auth_failed", request.url));
+   }
+   const returnTo = await consumeOAuthState(await sha256(state));
+-  if (!returnTo) return NextResponse.redirect(new URL("/submit?error=github_auth_expired", request.url));
++  if (!returnTo) return NextResponse.redirect(new URL("/join?error=github_auth_expired", request.url));
+ 
+   const tokenResponse = await fetch("https://github.com/login/oauth/access_token", {
+     method: "POST",
++    signal: AbortSignal.timeout(8_000),
+     headers: { accept: "application/json", "content-type": "application/json" },
+     body: JSON.stringify({
+       client_id: runtime.GITHUB_CLIENT_ID,
+@@ -29,12 +31,13 @@
+     }),
+   });
+   const tokenPayload = await tokenResponse.json() as { access_token?: string; error?: string };
+-  if (!tokenResponse.ok || !tokenPayload.access_token) return NextResponse.redirect(new URL("/submit?error=github_auth_failed", request.url));
++  if (!tokenResponse.ok || !tokenPayload.access_token) return NextResponse.redirect(new URL("/join?error=github_auth_failed", request.url));
+ 
+   const profileResponse = await fetch("https://api.github.com/user", {
++    signal: AbortSignal.timeout(8_000),
+     headers: { authorization: `Bearer ${tokenPayload.access_token}`, accept: "application/vnd.github+json", "user-agent": "Sundays-Gallery" },
+   });
+-  if (!profileResponse.ok) return NextResponse.redirect(new URL("/submit?error=github_profile_failed", request.url));
++  if (!profileResponse.ok) return NextResponse.redirect(new URL("/join?error=github_profile_failed", request.url));
+   const profile = await profileResponse.json() as GitHubProfile;
+   const creator = await upsertCreator({
+     githubId: String(profile.id),
+@@ -56,4 +59,9 @@
+     maxAge: 30 * 24 * 60 * 60,
+   });
+   return response;
++  } catch {
++    const response = NextResponse.redirect(new URL("/join?error=github_auth_failed", request.url));
++    response.cookies.delete(OAUTH_STATE_COOKIE);
++    return response;
++  }
+ }
+--- a/app/api/auth/github/start/route.ts
++++ b/app/api/auth/github/start/route.ts
+@@ -8,7 +8,7 @@
+   const runtime = bindings();
+   const returnTo = safeReturnTo(request.nextUrl.searchParams.get("return_to"));
+   if (!runtime.GITHUB_CLIENT_ID || !runtime.GITHUB_CLIENT_SECRET) {
+-    return NextResponse.redirect(new URL("/submit?error=github_not_configured", request.url));
++    return NextResponse.redirect(new URL("/join?error=github_not_configured", request.url));
+   }
+   const state = randomToken();
+   await createOAuthState(await sha256(state), returnTo);
+--- a/app/api/auth/signout/route.ts
++++ b/app/api/auth/signout/route.ts
+@@ -1,8 +1,11 @@
++import { mutationGuard } from "../../../../lib/request-security";
+ import { NextRequest, NextResponse } from "next/server";
+ import { deleteSession } from "../../../../db/repository";
+ import { SESSION_COOKIE, sha256 } from "../../../../lib/auth";
+ 
+ export async function POST(request: NextRequest) {
++  const rejected = mutationGuard(request);
++  if (rejected) return rejected;
+   const raw = request.cookies.get(SESSION_COOKIE)?.value;
+   if (raw) await deleteSession(await sha256(raw));
+   const response = NextResponse.redirect(new URL("/", request.url), 303);
+--- a/app/api/projects/[id]/recapture/route.ts
++++ b/app/api/projects/[id]/recapture/route.ts
+@@ -1,3 +1,4 @@
++import { mutationGuard } from "../../../../../lib/request-security";
+ import { NextRequest, NextResponse } from "next/server";
+ import { waitUntil } from "cloudflare:workers";
+ import { getOwnedProject, queueThumbnail } from "../../../../../db/repository";
+@@ -5,11 +6,14 @@
+ import { captureProjectThumbnail } from "../../../../../lib/thumbnails";
+ 
+ export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
++  const rejected = mutationGuard(request);
++  if (rejected) return rejected;
+   const creator = await currentCreator();
+   if (!creator) return NextResponse.redirect(new URL("/submit?error=signin_required", request.url), 303);
+   const { id } = await params;
+   const project = await getOwnedProject(id, creator.id);
+   if (!project) return new NextResponse("Not found", { status: 404 });
++  if (project.thumbnail_status === "pending" && Date.now() - Date.parse(project.updated_at) < 120_000) return NextResponse.redirect(new URL("/dashboard?updated=thumbnail", request.url), 303);
+   await queueThumbnail(id);
+   waitUntil(captureProjectThumbnail(id));
+   return NextResponse.redirect(new URL("/dashboard?updated=thumbnail", request.url), 303);
+--- a/app/api/projects/[id]/report/route.ts
++++ b/app/api/projects/[id]/report/route.ts
+@@ -1,3 +1,4 @@
++import { mutationGuard, readBoundedFormData } from "../../../../../lib/request-security";
+ import { NextRequest, NextResponse } from "next/server";
+ import { consumeReportAllowance, createReport, getProjectById } from "../../../../../db/repository";
+ 
+@@ -13,6 +14,8 @@
+ }
+ 
+ export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
++  const rejected = mutationGuard(request);
++  if (rejected) return rejected;
+   const origin = request.headers.get("origin");
+   if (origin && origin !== request.nextUrl.origin) return new NextResponse("Forbidden", { status: 403 });
+   const { id } = await params;
+@@ -21,7 +24,7 @@
+   if (!await consumeReportAllowance(await reportFingerprint(request))) {
+     return NextResponse.redirect(new URL(`/project/${project.slug}?report_limit=1`, request.url), 303);
+   }
+-  const form = await request.formData();
++  const form = await readBoundedFormData(request);
+   const requestedReason = String(form.get("reason") ?? "broken_link").slice(0, 40);
+   const reason = reasons.has(requestedReason) ? requestedReason : "other";
+   const details = String(form.get("details") ?? "").trim().slice(0, 500) || null;
+--- a/app/api/projects/[id]/route.ts
++++ b/app/api/projects/[id]/route.ts
+@@ -1,15 +1,21 @@
++import { formRedirect, formFailure } from "../../../../lib/form-response";
++import { mutationGuard, readBoundedFormData } from "../../../../lib/request-security";
+ import { NextRequest, NextResponse } from "next/server";
+ import { waitUntil } from "cloudflare:workers";
+ import { getOwnedProject, queueThumbnail, showOwnedProjectOnProfile, submitOwnedProjectToGallery, updateOwnedProject, withdrawOwnedProject } from "../../../../db/repository";
+ import { currentCreator } from "../../../../lib/auth";
+-import { verifyProjectFields, formErrorUrl } from "../../../../lib/project-input";
++import { verifyProjectFields } from "../../../../lib/project-input";
+ import { captureProjectThumbnail } from "../../../../lib/thumbnails";
+ 
+ export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
++  const rejected = mutationGuard(request);
++  if (rejected) return rejected;
+   const creator = await currentCreator();
+-  if (!creator) return NextResponse.redirect(new URL("/submit?error=signin_required", request.url), 303);
++  if (!creator) return formRedirect(request,"/join?return_to=%2Fsubmit");
+   const { id } = await params;
+-  const form = await request.formData();
++  const existing = await getOwnedProject(id, creator.id);
++  if (!existing) return new NextResponse("Not found", { status: 404 });
++  const form = await readBoundedFormData(request);
+   const action = String(form.get("action") ?? "update");
+   try {
+     if (action === "withdraw") {
+@@ -25,17 +31,16 @@
+       if (!submitted) return new NextResponse("Not found", { status: 404 });
+       return NextResponse.redirect(new URL("/dashboard?updated=gallery", request.url), 303);
+     }
++    if (action !== "update") return new NextResponse("Invalid action", { status: 400 });
+     const input = await verifyProjectFields(form, creator.github_handle);
+-    const existing = await getOwnedProject(id, creator.id);
+-    if (!existing) return new NextResponse("Not found", { status: 404 });
+     const updated = await updateOwnedProject(id, creator.id, input);
+     if (!updated) return new NextResponse("Not found", { status: 404 });
+     if (existing.live_url !== input.liveUrl || existing.thumbnail_status !== "ready") {
+-      await queueThumbnail(id);
++      await queueThumbnail(id, existing.live_url !== input.liveUrl);
+       waitUntil(captureProjectThumbnail(id));
+     }
+-    return NextResponse.redirect(new URL("/dashboard?updated=project", request.url), 303);
++    return formRedirect(request,"/dashboard?updated=project");
+   } catch (error) {
+-    return NextResponse.redirect(new URL(formErrorUrl("/dashboard", error), request.url), 303);
++    return formFailure(request,"/dashboard",error);
+   }
+ }
+--- a/app/api/projects/route.ts
++++ b/app/api/projects/route.ts
+@@ -1,19 +1,23 @@
+-import { NextRequest, NextResponse } from "next/server";
++import { formRedirect, formFailure } from "../../../lib/form-response";
++import { mutationGuard, readBoundedFormData } from "../../../lib/request-security";
++import { NextRequest } from "next/server";
+ import { waitUntil } from "cloudflare:workers";
+ import { createProject } from "../../../db/repository";
+ import { currentCreator } from "../../../lib/auth";
+-import { verifyProjectFields, formErrorUrl } from "../../../lib/project-input";
++import { verifyProjectFields } from "../../../lib/project-input";
+ import { captureProjectThumbnail } from "../../../lib/thumbnails";
+ 
+ export async function POST(request: NextRequest) {
++  const rejected = mutationGuard(request);
++  if (rejected) return rejected;
+   const creator = await currentCreator();
+-  if (!creator) return NextResponse.redirect(new URL("/submit?error=signin_required", request.url), 303);
++  if (!creator) return formRedirect(request,"/join?return_to=%2Fsubmit");
+   try {
+-    const input = await verifyProjectFields(await request.formData(), creator.github_handle);
++    const input = await verifyProjectFields(await readBoundedFormData(request), creator.github_handle);
+     const project = await createProject({ creatorId: creator.id, ...input });
+     waitUntil(captureProjectThumbnail(project.id));
+-    return NextResponse.redirect(new URL(`/dashboard?submitted=${encodeURIComponent(project.id)}`, request.url), 303);
++    return formRedirect(request,`/dashboard?submitted=${encodeURIComponent(project.id)}`);
+   } catch (error) {
+-    return NextResponse.redirect(new URL(formErrorUrl("/submit", error), request.url), 303);
++    return formFailure(request,"/submit",error);
+   }
+ }
+--- a/app/archive/page.tsx
++++ b/app/archive/page.tsx
+@@ -1,53 +1,10 @@
+ import Link from "next/link";
+-import { listApprovedProjects, type Project } from "../../db/repository";
++import { listApprovedProjects } from "../../db/repository";
+ import { ProjectThumbnail } from "../ProjectThumbnail";
+ import { SiteNav } from "../SiteNav";
+-import { ProjectPreview } from "../ProjectPreview";
+-import { galleryProjects, projectSlug } from "../fixtures/demoGallery";
+-
++import { SiteFooter } from "../SiteFooter";
+ export const dynamic = "force-dynamic";
+-
+ export default async function ArchivePage() {
+-  const demoMode = process.env.NODE_ENV !== "production";
+-  const demoProjects = galleryProjects.slice(0, 6).reverse();
+-  let projects: Project[] = [];
+-  try { projects = await listApprovedProjects(); } catch { projects = []; }
+-  return (
+-    <main>
+-      <SiteNav active="archive" />
+-      <section className="archive-page route-page shell">
+-        <div className="section-head"><div><span className="section-number">{demoMode ? "CONCEPT PREVIEW / ARCHIVE" : "ARCHIVE / PUBLISHED"}</span><h1 className="explore-title">Newest first</h1></div></div>
+-        {demoMode ? (
+-          <div className="archive-list">
+-            {demoProjects.map((project) => (
+-              <div className="archive-row" key={project.handle}>
+-                <span className="archive-number">{project.number}</span>
+-                <Link className="archive-thumb" href={`/demo/${projectSlug(project)}`}>
+-                  {project.thumbnail ? <img className="demo-edge-bleed" src={project.thumbnail} alt="" /> : <ProjectPreview type={project.preview} />}
+-                </Link>
+-                <strong><Link href={`/demo/${projectSlug(project)}`}>{project.title}</Link></strong>
+-                <span><Link href={`/demo/maker/${project.handle}`}>{project.maker}</Link></span>
+-                <span>Concept</span><span /><span>↗</span>
+-              </div>
+-            ))}
+-          </div>
+-        ) : projects.length === 0 ? (
+-          <div className="archive-empty"><p>No projects have been published yet.</p></div>
+-        ) : (
+-          <div className="archive-list">
+-            {projects.map((project, index) => (
+-              <div className="archive-row" key={project.id}>
+-                <span className="archive-number">{String(projects.length - index).padStart(2, "0")}</span>
+-                <a className="archive-thumb" href={project.live_url} target="_blank" rel="noopener noreferrer"><ProjectThumbnail project={project} /></a>
+-                <strong><a href={project.live_url} target="_blank" rel="noopener noreferrer">{project.title}</a></strong>
+-                <span><Link href={`/maker/${project.github_handle}`}>{project.display_name}</Link></span>
+-                <span>{project.published_at ? new Date(project.published_at).toLocaleDateString("en-US", { month: "short", year: "numeric" }) : ""}</span>
+-                <a href={project.live_url} target="_blank" rel="noopener noreferrer" aria-label={`Launch ${project.title}`}>↗</a>
+-              </div>
+-            ))}
+-          </div>
+-        )}
+-      </section>
+-    </main>
+-  );
++  const projects = await listApprovedProjects();
++  return <main><SiteNav active="archive" /><section id="content" tabIndex={-1} className="archive-page route-page shell"><div className="section-head"><div><span className="section-number">ARCHIVE / PUBLISHED</span><h1 className="explore-title">Newest first</h1></div></div>{projects.length === 0 ? <div className="gallery-empty"><p>No projects have been published yet.</p><Link href="/explore">Explore the collection ↗</Link></div> : <div className="archive-list">{projects.map((project,index) => <article className="archive-row" key={project.id}><span className="archive-number">{String(projects.length-index).padStart(2,"0")}</span><Link className="archive-thumb" href={`/project/${project.slug}`} aria-label={`About ${project.title}`}><ProjectThumbnail project={project}/></Link><h2 className="archive-title"><Link href={`/project/${project.slug}`}>{project.title}</Link></h2><Link className="archive-maker" href={`/maker/${project.github_handle}`}>{project.display_name}</Link><time className="archive-date" dateTime={project.published_at ?? undefined}>{project.published_at ? new Date(project.published_at).toLocaleDateString("en-US", {month:"short", year:"numeric", timeZone:"UTC"}) : ""}</time><a className="archive-launch" href={project.live_url} target="_blank" rel="noopener noreferrer" aria-label={`Launch ${project.title} on its creator’s site`}>↗</a></article>)}</div>}</section><SiteFooter/></main>;
+ }
+--- a/app/dashboard/page.tsx
++++ b/app/dashboard/page.tsx
+@@ -1,6 +1,8 @@
++import { ProjectForm } from "../ProjectForm";
++import { redirect } from "next/navigation";
+ import Link from "next/link";
+ import { listProjectsForOwner, type Project } from "../../db/repository";
+-import { currentCreator, githubAuthConfigured } from "../../lib/auth";
++import { currentCreator } from "../../lib/auth";
+ import { listPublicGitHubRepositories, type PublicGitHubRepository } from "../../lib/github-public";
+ import { ProjectThumbnail } from "../ProjectThumbnail";
+ import { PreviewStatusRefresh } from "../PreviewStatusRefresh";
+@@ -19,13 +21,10 @@
+ export default async function DashboardPage({ searchParams }: { searchParams: Promise<{ submitted?: string; updated?: string; error?: string }> }) {
+   const creator = await currentCreator();
+   const query = await searchParams;
+-  if (!creator) {
+-    return <main><SiteNav /><section className="login-page shell">{githubAuthConfigured() ? <a className="github-login" href="/api/auth/github/start?return_to=%2Fdashboard"><img src="https://github.githubassets.com/favicons/favicon.svg" alt="" />Log in</a> : <Link className="github-login disabled" href="/join"><img src="https://github.githubassets.com/favicons/favicon.svg" alt="" />Log in</Link>}</section></main>;
+-  }
+-  let projects: Project[] = [];
++  if (!creator) redirect("/join?return_to=%2Fdashboard");
++  const projects = await listProjectsForOwner(creator.id);
+   let repositories: PublicGitHubRepository[] = [];
+   let repositoryError = "";
+-  try { projects = await listProjectsForOwner(creator.id); } catch { projects = []; }
+   try { repositories = await listPublicGitHubRepositories(creator.github_handle); } catch (error) { repositoryError = error instanceof Error ? error.message : "GitHub could not load your public repositories right now."; }
+   const sharedRepositories = new Set(projects.map((project) => project.repository_url?.replace(/\/$/, "").toLowerCase()).filter(Boolean));
+   const previewsAreProcessing = projects.some((project) => project.thumbnail_status === "pending");
+@@ -33,14 +32,41 @@
+     <main>
+       <PreviewStatusRefresh active={previewsAreProcessing} />
+       <SiteNav />
+-      <section className="mvp-page dashboard-page shell">
+-        <div className="dashboard-heading"><div><span className="section-number">CREATOR / @{creator.github_handle}</span><h1>Your projects</h1><p className="profile-live-note">Your maker profile is live now. <Link href={`/maker/${creator.github_handle}`}>View public profile ↗</Link></p></div><Link className="mvp-button primary" href="/submit">Add something else ↗</Link></div>
++      <section id="content" tabIndex={-1} className="mvp-page dashboard-page shell">
++        <div className="dashboard-heading"><div><span className="section-number">CREATOR / @{creator.github_handle}</span><h1>Your projects</h1><p className="profile-live-note">Your maker profile is live now. <Link href={`/maker/${creator.github_handle}`}>View public profile ↗</Link></p></div><Link className="mvp-button primary" href="/submit">Add a project ↗</Link></div>
+         {query.submitted && <div className="form-notice success" role="status"><b>Your project is live on your profile.</b> It is also in review for the gallery.</div>}
+-        {query.updated && <div className="form-notice success" role="status">{query.updated === "withdrawn" ? "The project is now hidden from your profile and withdrawn from Explore review." : query.updated === "profile" ? "The project is live on your profile." : query.updated === "gallery" ? "Your project has been submitted to Explore." : "Your project has been updated."}</div>}
++        {query.updated && <div className="form-notice success" role="status">{query.updated === "withdrawn" ? "The project is now hidden from your profile and withdrawn from Explore review." : query.updated === "profile" ? "The project is live on your profile." : query.updated === "thumbnail" ? "Preview capture has been queued." : query.updated === "gallery" ? "Your project has been submitted to Explore." : "Your project has been updated."}</div>}
+         {query.error && <div className="form-notice error" role="alert">{query.error}</div>}
++        <div className="dashboard-section-heading"><span className="section-number">SHARED ON SUNDAYS</span><h2>Your shared projects</h2></div>
++        {projects.length === 0 ? <div className="dashboard-empty"><p>Nothing shared yet. Add a project or choose a public repository below.</p></div> : (
++          <div className="dashboard-projects">
++            {projects.map((project) => (
++              <article className="dashboard-card" key={project.id}>
++                <div className="dashboard-thumb"><ProjectThumbnail project={project} /></div>
++                <div className="dashboard-card-head"><div><span className={`status-chip profile-${project.profile_status}`}>{project.profile_status === "visible" ? "Live on profile" : "Hidden from profile"}</span><span className={`status-chip status-${project.moderation_status}`}>{galleryStatusCopy(project)}</span><span className={`status-chip thumbnail-${project.thumbnail_status}`}>{project.thumbnail_status === "ready" ? "Preview: captured" : project.thumbnail_status === "pending" ? "Preview: capturing" : "Preview: retry needed"}</span><span className={`status-chip verification-${project.verification_status}`}>{project.verification_status === "verified" ? "Repository matched" : "Repository unverified"}</span><span className={`status-chip link-${project.last_check_status}`}>Link: {project.last_check_status}</span></div><small>Shared {new Date(project.created_at).toLocaleDateString()}</small></div>
++                <ProjectForm className="dashboard-edit-form" action={`/api/projects/${project.id}`}>
++                  <input type="hidden" name="action" value="update" />
++                  <label>Title<input name="title" defaultValue={project.title} minLength={2} maxLength={80} required /></label>
++                  <label>Live URL<input name="live_url" type="url" defaultValue={project.live_url} required /></label>
++                  <label>GitHub repository<input name="repository_url" type="url" defaultValue={project.repository_url ?? ""} placeholder={`https://github.com/${creator.github_handle}/project`} /></label>
++                  <label>Description<textarea name="description" defaultValue={project.short_description} minLength={10} maxLength={240} rows={3} required /></label>
++                  {project.moderation_note && <p className="moderation-feedback"><b>Review note:</b> {project.moderation_note}</p>}
++                  <div className="form-actions"><button type="submit">Save changes</button>{project.moderation_status === "approved" && <small>Saving sends this project back to gallery review.</small>}{project.moderation_status === "approved" && <Link href={`/project/${project.slug}`}>View project page</Link>}</div>
++                </ProjectForm>
++                <div className="secondary-actions">
++                  {/* Server-only request-time age check, not a client render. */}
++                  {/* eslint-disable-next-line react-hooks/purity */}
++                  {(project.thumbnail_status === "failed" || (project.thumbnail_status === "pending" && Date.now() - Date.parse(project.updated_at) > 120_000)) && <form action={`/api/projects/${project.id}/recapture`} method="post"><button type="submit">Retry preview</button></form>}
++                  {(project.moderation_status === "draft" || project.moderation_status === "declined") && project.profile_status === "visible" && <form action={`/api/projects/${project.id}`} method="post"><input type="hidden" name="action" value="submit_gallery" /><button type="submit">Submit to Explore</button></form>}
++                  {project.profile_status === "visible" ? <form action={`/api/projects/${project.id}`} method="post"><input type="hidden" name="action" value="withdraw" /><button className="danger-link" type="submit">Hide project everywhere</button></form> : <form action={`/api/projects/${project.id}`} method="post"><input type="hidden" name="action" value="show_profile" /><button type="submit">Share on profile</button></form>}
++                </div>
++              </article>
++            ))}
++          </div>
++        )}
+         <section className="repository-picker" aria-labelledby="public-repositories-heading">
+           <div className="repository-picker-heading"><div><span className="section-number">PUBLIC ON GITHUB</span><h2 id="public-repositories-heading">Choose what to share.</h2></div><span>{repositories.length} repositories</span></div>
+-          {repositoryError ? <div className="form-notice error" role="status">{repositoryError} <a href="/dashboard">Try again</a></div> : repositories.length === 0 ? <div className="repository-empty">No public repositories found. <Link href="/submit">Add something else ↗</Link></div> : (
++          {repositoryError ? <div className="form-notice error" role="status">{repositoryError} <a href="/dashboard">Try again</a></div> : repositories.length === 0 ? <div className="repository-empty">No public repositories found. <Link href="/submit">Add a project ↗</Link></div> : (
+             <div className="repository-list">
+               {repositories.map((repository) => {
+                 const alreadyShared = sharedRepositories.has(repository.repositoryUrl.replace(/\/$/, "").toLowerCase());
+@@ -56,31 +82,6 @@
+             </div>
+           )}
+         </section>
+-        <div className="dashboard-section-heading"><span className="section-number">SHARED ON SUNDAYS</span><h2>Your submissions</h2></div>
+-        {projects.length === 0 ? <div className="dashboard-empty"><p>Nothing shared yet. Choose a public repository above or add something else.</p></div> : (
+-          <div className="dashboard-projects">
+-            {projects.map((project) => (
+-              <article className="dashboard-card" key={project.id}>
+-                <div className="dashboard-thumb"><ProjectThumbnail project={project} /></div>
+-                <div className="dashboard-card-head"><div><span className={`status-chip profile-${project.profile_status}`}>{project.profile_status === "visible" ? "Live on profile" : "Hidden from profile"}</span><span className={`status-chip status-${project.moderation_status}`}>{galleryStatusCopy(project)}</span><span className={`status-chip thumbnail-${project.thumbnail_status}`}>{project.thumbnail_status === "ready" ? "Preview: captured" : project.thumbnail_status === "pending" ? "Preview: capturing" : "Preview: retry needed"}</span><span className={`status-chip verification-${project.verification_status}`}>{project.verification_status === "verified" ? "Maker verified" : "Unverified"}</span><span className={`status-chip link-${project.last_check_status}`}>Link: {project.last_check_status}</span></div><small>Shared {new Date(project.created_at).toLocaleDateString()}</small></div>
+-                <form className="dashboard-edit-form" action={`/api/projects/${project.id}`} method="post">
+-                  <input type="hidden" name="action" value="update" />
+-                  <label>Title<input name="title" defaultValue={project.title} minLength={2} maxLength={80} required /></label>
+-                  <label>Live URL<input name="live_url" type="url" defaultValue={project.live_url} required /></label>
+-                  <label>GitHub repository<input name="repository_url" type="url" defaultValue={project.repository_url ?? ""} placeholder={`https://github.com/${creator.github_handle}/project`} /></label>
+-                  <label>Description<textarea name="description" defaultValue={project.short_description} minLength={10} maxLength={240} rows={3} required /></label>
+-                  {project.moderation_note && <p className="moderation-feedback"><b>Review note:</b> {project.moderation_note}</p>}
+-                  <div className="form-actions"><button type="submit">Save changes</button>{project.moderation_status === "approved" && <Link href={`/project/${project.slug}`}>View project page</Link>}</div>
+-                </form>
+-                <div className="secondary-actions">
+-                  {project.thumbnail_status === "failed" && <form action={`/api/projects/${project.id}/recapture`} method="post"><button type="submit">Retry preview</button></form>}
+-                  {(project.moderation_status === "draft" || project.moderation_status === "declined") && project.profile_status === "visible" && <form action={`/api/projects/${project.id}`} method="post"><input type="hidden" name="action" value="submit_gallery" /><button type="submit">Submit to Explore</button></form>}
+-                  {project.profile_status === "visible" ? <form action={`/api/projects/${project.id}`} method="post"><input type="hidden" name="action" value="withdraw" /><button className="danger-link" type="submit">Hide from profile</button></form> : <form action={`/api/projects/${project.id}`} method="post"><input type="hidden" name="action" value="show_profile" /><button type="submit">Share on profile</button></form>}
+-                </div>
+-              </article>
+-            ))}
+-          </div>
+-        )}
+         <form action="/api/auth/signout" method="post"><button className="plain-button" type="submit">Sign out</button></form>
+       </section>
+     </main>
+--- a/app/demo/[handle]/page.tsx
++++ b/app/demo/[handle]/page.tsx
+@@ -10,8 +10,8 @@
+ 
+   return (
+     <main className="demo-app-stage">
+-      <Link className="demo-app-back" href="/demo/explore">← demo gallery</Link>
+-      <div className={`demo-app-surface${project.thumbnail ? " image" : ""}`}>
++      <header className="demo-app-header"><Link href="/demo/explore">← Demo gallery</Link><h1>{project.title}</h1><Link href={`/demo/maker/${project.handle}`}>{project.maker} ↗</Link><p>Static concept preview · not a working application</p></header>
++      <div id="content" className={`demo-app-surface${project.thumbnail ? " image" : ""}`}>
+         {project.thumbnail
+           ? <img className="demo-edge-bleed" src={project.thumbnail} alt={`${project.title} application`} />
+           : <ProjectPreview type={project.preview} title={project.title} />}
+--- a/app/demo/about/page.tsx
++++ b/app/demo/about/page.tsx
+@@ -1,13 +1,2 @@
+-import { SiteNav } from "../../SiteNav";
+-
+-export default function DemoAboutPage() {
+-  return (
+-    <main>
+-      <SiteNav active="about" demo />
+-      <section className="about-page route-page shell">
+-        <span className="about-index">DEMO / ABOUT SUNDAYS</span>
+-        <h1>For people who make things<br className="about-break" /> after they&apos;re done making things.</h1>
+-      </section>
+-    </main>
+-  );
+-}
++import { AboutContent } from "../../AboutContent";
++export default function AboutPage() { return <AboutContent demo />; }
+--- a/app/demo/archive/page.tsx
++++ b/app/demo/archive/page.tsx
+@@ -1,31 +1,9 @@
+ import Link from "next/link";
+ import { ProjectPreview } from "../../ProjectPreview";
+ import { SiteNav } from "../../SiteNav";
++import { SiteFooter } from "../../SiteFooter";
+ import { galleryProjects, projectSlug } from "../../fixtures/demoGallery";
+-
+ export default function DemoArchivePage() {
+-  const projects = galleryProjects.slice(0, 6).reverse();
+-  return (
+-    <main>
+-      <SiteNav active="archive" demo />
+-      <section className="archive-page route-page shell">
+-        <div className="section-head"><div><span className="section-number">DEMO / ARCHIVE</span><h1 className="explore-title">Newest first</h1></div></div>
+-        <div className="archive-list">
+-          {projects.map((project) => (
+-            <div className="archive-row" key={project.handle}>
+-              <span className="archive-number">{project.number}</span>
+-              <Link className="archive-thumb" href={`/demo/${projectSlug(project)}`}>
+-                {project.thumbnail ? <img className="demo-edge-bleed" src={project.thumbnail} alt={`Preview of ${project.title}`} /> : <ProjectPreview type={project.preview} title={project.title} />}
+-              </Link>
+-              <strong><Link href={`/demo/${projectSlug(project)}`}>{project.title}</Link></strong>
+-              <span><Link href={`/demo/maker/${project.handle}`}>{project.maker}</Link></span>
+-              <span>Concept</span>
+-              <span />
+-              <Link href={`/demo/${projectSlug(project)}`} aria-label={`Open ${project.title}`}>↗</Link>
+-            </div>
+-          ))}
+-        </div>
+-      </section>
+-    </main>
+-  );
++  const projects = [...galleryProjects].reverse();
++  return <main><SiteNav active="archive" demo /><section id="content" tabIndex={-1} className="archive-page route-page shell"><div className="section-head"><div><span className="section-number">DEMO / ARCHIVE</span><h1 className="explore-title">The demo index</h1></div></div><div className="archive-list">{projects.map(project => <article className="archive-row" key={project.title}><span className="archive-number">{project.number}</span><Link className="archive-thumb" href={`/demo/${projectSlug(project)}`} aria-label={`Preview ${project.title}`}>{project.thumbnail ? <img className="demo-edge-bleed" loading="lazy" src={project.thumbnail} alt=""/> : <ProjectPreview type={project.preview}/>}</Link><h2 className="archive-title"><Link href={`/demo/${projectSlug(project)}`}>{project.title}</Link></h2><Link className="archive-maker" href={`/demo/maker/${project.handle}`}>{project.maker}</Link><span className="archive-date">{project.type}</span><Link className="archive-launch" href={`/demo/${projectSlug(project)}`} aria-label={`Preview ${project.title}`}>↗</Link></article>)}</div></section><SiteFooter demo/></main>;
+ }
+--- a/app/demo/explore/page.tsx
++++ b/app/demo/explore/page.tsx
+@@ -6,7 +6,7 @@
+   return (
+     <main>
+       <SiteNav active="explore" demo />
+-      <section className="projects route-page shell">
++      <section id="content" tabIndex={-1} className="projects route-page shell">
+         <div className="section-head">
+           <div>
+             <span className="section-number">DEMO / EXPLORE</span>
+--- a/app/demo/maker/[handle]/page.tsx
++++ b/app/demo/maker/[handle]/page.tsx
+@@ -14,7 +14,7 @@
+   return (
+     <main className="profile">
+       <SiteNav demo />
+-      <section className="profile-hero shell demo-profile-hero">
++      <section id="content" tabIndex={-1} className="profile-hero shell demo-profile-hero">
+         <div className="profile-index">DEMO PROFILE / @{maker.handle}</div>
+         <div className="profile-avatar">{initials}</div>
+         <div className="profile-title"><h1>{maker.maker}</h1></div>
+--- /dev/null
++++ b/app/demo/not-found.tsx
+@@ -0,0 +1,6 @@
++import Link from "next/link";
++import { SiteNav } from "../SiteNav";
++
++export default function NotFound() {
++  return <main><SiteNav demo /><section id="content" tabIndex={-1} className="shell error-page"><span className="section-number">DEMO / NOT FOUND</span><h1>This demo isn’t here.</h1><Link className="text-link" href="/demo/explore">Back to the demo collection ↗</Link></section></main>;
++}
+--- a/app/demo/page.tsx
++++ b/app/demo/page.tsx
+@@ -6,7 +6,7 @@
+   return (
+     <main>
+       <SiteNav demo />
+-      <section className="projects shell" id="work">
++      <section id="content" tabIndex={-1} className="projects shell">
+         <div className="section-head">
+           <div>
+             <span className="section-number">DEMO / 001—006</span>
+--- /dev/null
++++ b/app/error.tsx
+@@ -0,0 +1,7 @@
++"use client";
++
++import Link from "next/link";
++
++export default function ErrorPage({ reset }: { error: Error; reset: () => void }) {
++  return <main className="shell error-page"><Link className="wordmark" href="/">sundays<span>.</span></Link><section id="content"><span className="section-number">TEMPORARILY UNAVAILABLE</span><h1>We couldn’t load this page.</h1><p>Your saved projects haven’t changed. Please try again.</p><div className="form-actions"><button className="mvp-button" onClick={reset}>Try again</button><Link href="/demo">Browse the demo ↗</Link></div></section></main>;
++}
+--- a/app/explore/page.tsx
++++ b/app/explore/page.tsx
+@@ -1,21 +1,18 @@
+ import Link from "next/link";
+-import { listApprovedProjects, type Project } from "../../db/repository";
++import { listApprovedProjects } from "../../db/repository";
+ import { PublicGallery } from "../PublicGallery";
+-import { ExploreGallery } from "../ExploreGallery";
+ import { SiteNav } from "../SiteNav";
+ 
+ export const dynamic = "force-dynamic";
+ 
+ export default async function ExplorePage() {
+-  const demoMode = process.env.NODE_ENV !== "production";
+-  let projects: Project[] = [];
+-  try { projects = await listApprovedProjects(); } catch { projects = []; }
++  const projects = await listApprovedProjects();
+   return (
+     <main>
+       <SiteNav active="explore" />
+-      <section className="projects route-page shell">
+-        <div className="section-head"><div><span className="section-number">{demoMode ? "CONCEPT PREVIEW / EXPLORE" : "GALLERY / ALL APPROVED"}</span><h1 className="explore-title">Explore the collection</h1></div></div>
+-        {demoMode ? <ExploreGallery /> : <PublicGallery projects={projects} />}
++      <section id="content" tabIndex={-1} className="projects route-page shell">
++        <div className="section-head"><div><span className="section-number">GALLERY / COLLECTION</span><h1 className="explore-title">Explore the collection</h1></div><Link className="text-link" href="/submit">Share a project ↗</Link></div>
++        <PublicGallery projects={projects} />
+       </section>
+       <footer className="footer minimal-footer shell"><Link className="wordmark" href="/">sundays<span>.</span><small>offhours</small></Link><small>© 2026</small></footer>
+     </main>
+--- a/app/globals.css
++++ b/app/globals.css
+@@ -201,19 +201,3 @@
+   object-position:center!important;
+   transform:none!important;
+ }
+-.demo-edge-bleed[src$="/23.png"],
+-.demo-edge-bleed[src$="/49.png"]{
+-  width:104%!important;
+-  height:104%!important;
+-  max-width:none!important;
+-  margin:-2%!important;
+-  object-fit:cover!important;
+-}
+-.demo-frameless-frame:has(.demo-edge-bleed[src$="/08.png"]),
+-.demo-app-surface.image:has(.demo-edge-bleed[src$="/08.png"]),
+-.archive-thumb:has(.demo-edge-bleed[src$="/08.png"]){
+-  background:#f4e2b7!important;
+-}
+-.demo-edge-bleed[src$="/08.png"]{
+-  transform:translateY(1.75%)!important;
+-}
+--- a/app/join/page.tsx
++++ b/app/join/page.tsx
+@@ -1,34 +1,17 @@
+ import Link from "next/link";
+-import { currentCreator, githubAuthConfigured } from "../../lib/auth";
++import { currentCreator, githubAuthConfigured, safeReturnTo } from "../../lib/auth";
+ import { SiteNav } from "../SiteNav";
+-
+ export const dynamic = "force-dynamic";
+-
+ const authErrors: Record<string, string> = {
+-  github_not_configured: "GitHub sign-in is not configured on this deployment yet.",
++  github_not_configured: "GitHub sign-in is temporarily unavailable.",
+   github_auth_failed: "GitHub sign-in could not be completed. Please try again.",
+   github_auth_expired: "That sign-in attempt expired. Please start again.",
+-  github_profile_failed: "Sundays could not read your public GitHub profile.",
++  github_profile_failed: "We couldn’t read your public GitHub profile. Please try again.",
+ };
+-
+-export default async function JoinPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
++export default async function JoinPage({ searchParams }: { searchParams: Promise<{ error?: string; return_to?: string }> }) {
+   const creator = await currentCreator();
+-  const { error } = await searchParams;
++  const query = await searchParams;
++  const destination = safeReturnTo(query.return_to ?? null);
+   const configured = githubAuthConfigured();
+-
+-  return (
+-    <main>
+-      <SiteNav />
+-      <section className="login-page shell">
+-        {error && <div className="form-notice error" role="alert">{authErrors[error] ?? error}</div>}
+-        {creator ? (
+-          <Link className="github-login" href="/dashboard"><img src={creator.avatar_url} alt="" />Continue as @{creator.github_handle}</Link>
+-        ) : (
+-          configured
+-            ? <a className="github-login" href="/api/auth/github/start?return_to=%2Fdashboard"><img src="https://github.githubassets.com/favicons/favicon.svg" alt="" />Log in</a>
+-            : <span className="github-login disabled" aria-disabled="true" title="GitHub login is not configured yet"><img src="https://github.githubassets.com/favicons/favicon.svg" alt="" />Log in</span>
+-        )}
+-      </section>
+-    </main>
+-  );
++  return <main><SiteNav /><section id="content" tabIndex={-1} className="login-page shell"><div className="login-copy"><span className="section-number">CREATOR / SIGN IN</span><h1>A place for your work.</h1><p>Sign in with GitHub to share projects and manage your public creator profile.</p>{query.error && <div className="form-notice error" role="alert">{authErrors[query.error] ?? "Sign-in could not be completed. Please try again."}</div>}{creator ? <Link className="github-login" href={destination}>Continue as @{creator.github_handle}</Link> : configured ? <a className="github-login" href={`/api/auth/github/start?return_to=${encodeURIComponent(destination)}`}>Continue with GitHub ↗</a> : <p className="form-notice" role="status">GitHub sign-in is temporarily unavailable. You can still browse the gallery.</p>}<p className="login-note">Public identity only. No private repository access.</p><Link className="text-link" href="/explore">Browse the collection</Link></div></section></main>;
+ }
+--- a/app/layout.tsx
++++ b/app/layout.tsx
+@@ -1,21 +1,13 @@
+ import type { Metadata } from "next";
+-import { headers } from "next/headers";
+ import "./globals.css";
+ import "./explore-apps.css";
+-
+-export async function generateMetadata(): Promise<Metadata> {
+-  const requestHeaders = await headers();
+-  const host = requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host") ?? "localhost:3000";
+-  const protocol = requestHeaders.get("x-forwarded-proto") ?? (host.includes("localhost") ? "http" : "https");
+-  const origin = `${protocol}://${host}`;
+-  return {
+-    title: "sundays — Personal software made after hours",
+-    description: "Open creator profiles and a gallery of independent applications, hosted and controlled by their makers.",
+-    openGraph: { title: "sundays — Personal software made after hours", description: "Open creator profiles and a gallery of independent applications, hosted and controlled by their makers.", type: "website", images: [{ url: `${origin}/og.png`, width: 1200, height: 630, alt: "sundays. offhours" }] },
+-    twitter: { card: "summary_large_image", title: "sundays — Personal software made after hours", description: "Open creator profiles and a gallery of independent applications, hosted and controlled by their makers.", images: [`${origin}/og.png`] },
+-  };
+-}
+-
+-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+-  return <html lang="en"><body>{children}</body></html>;
+-}
++import "./product.css";
++export const metadata: Metadata = {
++  icons: { icon: "/favicon.svg" },
++  metadataBase: new URL("https://offhours-gallery.badcolours.chatgpt.site"),
++  title: "sundays — Personal software made after hours",
++  description: "Open creator profiles and a gallery of independent applications, hosted and controlled by their makers.",
++  openGraph: {title:"sundays — Personal software made after hours",description:"Personal software, hosted and controlled by its creators.",type:"website",images:[{url:"/og.png",width:1200,height:630,alt:"sundays. offhours"}]},
++  twitter: {card:"summary_large_image",images:["/og.png"]},
++};
++export default function RootLayout({children}:Readonly<{children:React.ReactNode}>) { return <html lang="en"><body>{children}</body></html>; }
+--- a/app/maker/[handle]/page.tsx
++++ b/app/maker/[handle]/page.tsx
+@@ -1,3 +1,4 @@
++import { CreatorAvatar } from "../../CreatorAvatar";
+ import type { Metadata } from "next";
+ import Link from "next/link";
+ import { notFound } from "next/navigation";
+@@ -18,16 +19,15 @@
+ 
+ export default async function MakerPage({ params }: { params: Promise<{ handle: string }> }) {
+   const { handle } = await params;
+-  let creator;
+-  try { creator = await getCreatorByHandle(handle); } catch { creator = null; }
++  const creator = await getCreatorByHandle(handle);
+   if (!creator) notFound();
+   const projects = await listVisibleProjectsForCreator(creator.id);
+   return (
+     <main className="profile">
+       <SiteNav />
+-      <section className="profile-hero shell mvp-profile-hero">
++      <section id="content" tabIndex={-1} className="profile-hero shell mvp-profile-hero">
+         <div className="profile-index">MAKER / @{creator.github_handle}</div>
+-        <img className="github-avatar-large" src={creator.avatar_url} alt="" />
++        <CreatorAvatar className="github-avatar-large" src={creator.avatar_url} name={creator.display_name} />
+         <div className="profile-title"><h1>{creator.display_name}</h1><a className="text-link" href={creator.github_profile_url} target="_blank" rel="noopener noreferrer">GitHub profile ↗</a></div>
+       </section>
+       <section className="profile-work shell">
+--- /dev/null
++++ b/app/not-found.tsx
+@@ -0,0 +1,6 @@
++import Link from "next/link";
++import { SiteNav } from "./SiteNav";
++
++export default function NotFound() {
++  return <main><SiteNav /><section id="content" tabIndex={-1} className="shell error-page"><span className="section-number">404 / NOT FOUND</span><h1>This page isn’t here.</h1><p>The link may have changed, or the project may no longer be public.</p><Link className="text-link" href="/explore">Back to the collection ↗</Link></section></main>;
++}
+--- a/app/page.tsx
++++ b/app/page.tsx
+@@ -1,21 +1,18 @@
+ import Link from "next/link";
+-import { listApprovedProjects, type Project } from "../db/repository";
++import { listApprovedProjects } from "../db/repository";
+ import { PublicGallery } from "./PublicGallery";
+-import { ExploreGallery } from "./ExploreGallery";
+ import { SiteNav } from "./SiteNav";
+ 
+ export const dynamic = "force-dynamic";
+ 
+ export default async function Home() {
+-  const demoMode = process.env.NODE_ENV !== "production";
+-  let projects: Project[] = [];
+-  try { projects = await listApprovedProjects(6); } catch { projects = []; }
++  const projects = await listApprovedProjects(6);
+   return (
+     <main>
+       <SiteNav />
+-      <section className="projects shell" id="work">
+-        <div className="section-head"><div><span className="section-number">{demoMode ? "CONCEPT PREVIEW / 001—006" : "GALLERY / CURRENT"}</span><h1 className="explore-title">Selected work</h1></div><p>Personal software made after hours.<br />Hosted and controlled by its creators.</p></div>
+-        {demoMode ? <ExploreGallery featuredOnly /> : <PublicGallery projects={projects} />}
++      <section id="content" tabIndex={-1} className="projects shell">
++        <div className="section-head"><div><span className="section-number">GALLERY / CURRENT</span><h1 className="explore-title">Selected work</h1></div><p>Personal software made after hours.<br />Hosted and controlled by its creators.</p></div>
++        <PublicGallery projects={projects} />
+       </section>
+       <footer className="footer shell"><Link className="wordmark" href="/">sundays<span>.</span><small>offhours</small></Link><small>© 2026</small></footer>
+     </main>
+--- /dev/null
++++ b/app/product.css
+@@ -0,0 +1,156 @@
++/* Sundays owns the frame; each project's artwork retains its own typography and palette. */
++:root { --font-geist-mono: var(--font-mono); --font-geist-sans: var(--font-sans); }
++body { font-size: 16px; }
++main:not(.demo-app-stage) { min-height: 100svh; }
++.shell { min-width: 0; }
++[id="content"]:focus { outline: none; }
++.sr-only, .skip-link:not(:focus) { position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0; }
++.skip-link:focus { position:fixed;top:8px;left:12px;z-index:100;background:#fff;padding:12px;border:1px solid #111; }
++.nav-tabs a, .nav-account, .nav-account .github-button { font-size:14px; }
++.nav-tabs a { min-height:40px;display:flex;align-items:center; }
++.nav-account .github-button { min-height:40px;max-width:100%; }
++.section-head > p { font-size:12px;line-height:1.5; }
++.section-head { gap:24px; }
++.section-head .text-link { white-space:nowrap;font-size:14px; }
++.project-grid { row-gap:32px; }
++.project-meta, .project-copy, .profile-title, .dashboard-card > *, .project-detail-copy { min-width:0; }
++.project-meta h2 { font-size:21px;line-height:1.15;font-weight:400;letter-spacing:-.04em;margin:0; }
++.project-meta h2 a:hover { text-decoration:underline;text-underline-offset:3px; }
++.project-copy .project-maker { font:12px/1.5 var(--font-mono);width:fit-content;max-width:100%;color:#555; }
++.project-copy h2, .profile-title h1, .project-detail-copy h1, .archive-title, .repository-row h3 { overflow-wrap:anywhere; }
++.project-meta p { font-size:16px;line-height:1.45; }
++.project-side span, .project-number { font-size:12px; }
++.project-maker-line { flex-wrap:wrap; }
++.verification-mark { font-size:12px;text-transform:none;line-height:1.3; }
++/* Explicit dimensions prevent replaced elements from expanding square grid tracks. */
++.creator-image-frame { min-width:0;min-height:0;grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr); }
++.preview-frame.creator-image-frame, .profile-thumb.creator-image-frame { padding:0!important; }
++.preview-frame .project-thumbnail, .preview-frame .thumbnail-fallback { position:static; }
++.project-thumbnail { width:100%;height:100%;min-height:0;max-height:100%;object-fit:contain;object-position:center; }
++.thumbnail-fallback { background:#f7f7f7;color:#555;border:0;display:flex;flex-direction:column;justify-content:center;gap:12px;padding:20px;text-align:center; }
++.thumbnail-fallback span { position:static;font:12px var(--font-mono);letter-spacing:0; }
++.thumbnail-fallback strong { font:30px var(--font-sans);font-weight:400; }
++.thumbnail-fallback i { display:none; }
++.open-pill { font-size:12px; }
++.preview-frame:focus-visible .open-pill { opacity:1;transform:none; }
++.gallery-empty { min-height:250px;display:flex;flex-direction:column;justify-content:center;align-items:flex-start;gap:14px;border-bottom:1px solid #aaa; }
++.gallery-empty p { font-size:24px;letter-spacing:-.03em;margin:0; }
++.gallery-empty a, .about-copy a { text-decoration:underline;text-underline-offset:4px;font:14px var(--font-mono); }
++.explore-tabs { flex-wrap:wrap;overflow:visible;gap:8px; }
++.explore-tabs button { font-size:14px;min-height:40px; }
++.explore-tabs button span { color:#555; }
++.explore-more { font-size:14px; }
++/* Stable archive tracks, including on narrow screens. */
++.archive-row { grid-template-columns:36px 82px minmax(0,2fr) minmax(0,1fr) 110px 40px;gap:16px;padding:12px 0; }
++.archive-row .archive-number, .archive-row .archive-date { display:block;font:12px/1.4 var(--font-mono); }
++.archive-title { font-size:22px;line-height:1.2;font-weight:400;letter-spacing:-.03em;margin:0; }
++.archive-maker { font:14px/1.4 var(--font-mono);overflow-wrap:anywhere; }
++.archive-launch { min-width:40px;min-height:40px;display:grid;place-items:center; }
++.archive-thumb { display:block;border:0; }
++.archive-title a:hover, .archive-maker:hover { text-decoration:underline;text-underline-offset:3px; }
++.profile-hero { min-height:0;padding:48px 0 64px;grid-template-columns:160px minmax(0,1fr);grid-template-rows:auto auto;gap:36px;align-items:center; }
++.profile-index { font-size:12px;overflow-wrap:anywhere;margin:0; }
++.profile-avatar, .github-avatar-large { width:160px; }
++.profile-title h1 { line-height:1;max-width:100%;margin:0; }
++.profile-work { padding-bottom:64px; }
++.profile-project-caption small, .demo-profile-projects .profile-project-caption small, .mvp-profile-projects .profile-project-caption small { font:14px/1.5 var(--font-mono); }
++.mvp-profile-projects .profile-project-caption { display:flex;flex-direction:column;gap:10px; }
++.mvp-profile-projects .profile-project-caption > a { font-size:14px; }
++.profile-footer, .profile-footer small, .footer > small { font-size:12px; }
++.about-page { min-height:0; }
++.about-page h1 { margin:70px 0 64px;line-height:1; }
++.about-copy { display:grid;grid-template-columns:1fr 1fr;gap:8vw;margin:0 0 35px; }
++.about-copy p { max-width:640px;margin:0 0 20px;line-height:1.65; }
++.about-copy > p { font-size:24px;line-height:1.4;letter-spacing:-.025em; }
++.about-copy .demo-note { margin-top:28px;font:13px/1.5 var(--font-mono);color:#555; }
++.login-page { min-height:calc(100svh - 66px);padding:60px 0; }
++.login-copy { width:min(100%,480px); }
++.login-copy h1 { font-size:clamp(36px,5vw,56px);font-weight:400;letter-spacing:-.05em;line-height:1.05;margin:24px 0; }
++.login-copy p { line-height:1.6; }
++.login-copy .login-note { font:13px/1.5 var(--font-mono);margin:20px 0 28px; }
++.login-page .form-notice { position:static;transform:none;width:auto; }
++.mvp-intro h1, .dashboard-heading h1 { line-height:1; }
++.mvp-intro p, .signin-panel p { font-size:16px; }
++.mvp-button, .text-link { font-size:14px; }
++.submission-form label, .dashboard-edit-form label, .review-actions label, .report-control label { font-size:14px;text-transform:none;letter-spacing:0; }
++.submission-form label small, .permission-copy, .profile-live-note, .signed-in-line { font-size:13px;line-height:1.6; }
++.submission-form input, .submission-form textarea, .dashboard-edit-form input, .dashboard-edit-form textarea, .report-control textarea, .report-control select { font-size:16px;min-width:0; }
++.form-notice, .moderation-feedback { font-size:14px; }
++.status-chip, .dashboard-card-head small, .repository-meta span, .repository-shared { font-size:12px;line-height:1.4; }
++.dashboard-card-head { flex-wrap:wrap;gap:14px; }
++.form-actions, .secondary-actions, .signed-in-line { flex-wrap:wrap; }
++.form-actions button, .secondary-actions button, .plain-button, .report-control button, .review-actions button { font-size:14px;min-height:44px; }
++.form-actions small { font:12px/1.5 var(--font-mono);flex-basis:100%; }
++.dashboard-projects { margin-bottom:64px; }
++.repository-row p, .repository-empty { font-size:14px;line-height:1.5; }
++.repository-share, .repository-picker-heading > span { font-size:14px; }
++.project-detail-index { overflow-wrap:anywhere; }
++.project-detail-copy h1 { line-height:1; }
++.project-creator-line { flex-wrap:wrap; }
++.project-creator-line, .project-repository-link, .project-detail-copy > small, .report-control { font-size:14px;line-height:1.5; }
++.report-control summary { min-height:44px;max-width:100%; }
++.error-page { padding-block:60px; }
++.error-page section { margin-block:80px; }
++.error-page h1 { font-size:clamp(36px,5vw,64px);font-weight:400;letter-spacing:-.045em;line-height:1.1; }
++.error-page p { line-height:1.6; }
++.demo-app-stage { padding:24px;display:flex;flex-direction:column;gap:24px;align-items:center;background:#181818; }
++.demo-app-header { width:min(100%,1000px);display:flex;align-items:center;gap:24px;flex-wrap:wrap;color:#fff;font:14px/1.5 var(--font-mono); }
++.demo-app-header h1 { font:24px var(--font-sans);margin:0; }
++.demo-app-header p { flex-basis:100%;margin:0;color:#ccc;font-size:13px; }
++.demo-app-surface { width:min(100%,1000px);flex:none; }
++@media(max-width:800px) {
++ .nav { height:auto;min-height:98px;grid-template-columns:minmax(0,1fr) auto;gap:6px 12px;padding:12px 0 8px; }
++ .nav .wordmark small { display:none; }
++ .nav-tabs { grid-row:2;grid-column:1/-1;gap:4px; }
++ .nav-tabs a { font-size:14px;padding:7px 12px; }
++ .nav-account { display:flex;grid-column:2;grid-row:1;max-width:180px; }
++ .nav .github-button { display:inline-flex;padding:8px 12px; }
++ .section-head { align-items:flex-start;flex-wrap:wrap;gap:16px; }
++ .section-head > p { display:block;font-size:12px; }
++ .archive-row { grid-template-columns:26px 64px minmax(0,1fr) 36px;gap:8px 12px;min-height:106px; }
++ .archive-number { grid-column:1;grid-row:1/4; }
++ .archive-thumb { width:64px;grid-column:2;grid-row:1/4; }
++ .archive-title { font-size:20px;grid-column:3;grid-row:1; }
++ .archive-maker { grid-column:3;grid-row:2;font-size:13px; }
++ .archive-date { grid-column:3;grid-row:3; }
++ .archive-launch { grid-column:4;grid-row:1/4;min-width:36px; }
++ .profile-hero { padding:36px 0 48px;grid-template-columns:100px minmax(0,1fr);gap:24px 20px; }
++ .profile-avatar, .github-avatar-large { width:100px; }
++ .profile-title h1, .demo-profile-hero .profile-title h1 { font-size:clamp(32px,7vw,56px);line-height:1.05;margin:0; }
++ .profile-title .text-link { max-width:100%; }
++ .about-copy { grid-template-columns:1fr;gap:20px; }
++ .about-page h1 { font-size:clamp(36px,8vw,64px);margin:44px 0; }
++ .profile-footer { gap:16px;flex-wrap:wrap; }
++ .footer { padding:28px 0;min-height:90px; }
++ .footer > small { grid-row:1; }
++ .login-page { min-height:calc(100svh - 98px); }
++ .demo-app-stage { padding:20px 12px; }
++ .demo-app-header { gap:12px 20px; }
++}
++@media(max-width:380px) {
++ .profile-hero { grid-template-columns:72px minmax(0,1fr);gap:20px 14px; }
++ .profile-avatar, .github-avatar-large { width:72px; }
++ .profile-title h1, .demo-profile-hero .profile-title h1 { font-size:34px; }
++ .archive-row { grid-template-columns:22px 52px minmax(0,1fr) 30px;gap:8px; }
++ .archive-thumb { width:52px; }
++}
++@media(prefers-reduced-motion:reduce) {
++ *, *::before, *::after { scroll-behavior:auto!important;animation:none!important;transition:none!important; }
++}
++.submission-form > fieldset, .dashboard-edit-form > fieldset { display:contents;border:0;padding:0;margin:0;min-width:0; }
++.dashboard-edit-form > .form-notice, .save-status { grid-column:1/-1; }
++.save-status { font:14px var(--font-mono); }
++fieldset:disabled button { opacity:.6;cursor:wait; }
++.archive-row span.archive-date { display:block; }
++.avatar-fallback { display:grid;place-items:center;aspect-ratio:1;background:#f7f7f7;color:#555;border:1px solid #aaa;border-radius:50%;font:20px var(--font-mono); }
++.signed-in-line .avatar-fallback { width:34px;flex:none;font-size:12px; }
++.project-creator-line .avatar-fallback { width:38px;font-size:14px; }
++.github-avatar-large.avatar-fallback { font-size:40px; }
++.error-page h1 { margin:24px 0 16px; }
++.error-page p { margin:0 0 24px; }
++/* Keep managing work close to the top of the creator's page. */
++.dashboard-page { padding-top:32px; }
++.dashboard-heading { margin:12px 0 30px;padding-bottom:24px; }
++.dashboard-heading h1 { font-size:clamp(40px,5vw,64px); }
++.dashboard-section-heading { margin-bottom:16px; }
++.dashboard-section-heading h2 { font-size:26px; }
+--- a/app/project/[slug]/page.tsx
++++ b/app/project/[slug]/page.tsx
+@@ -1,5 +1,5 @@
++import { CreatorAvatar } from "../../CreatorAvatar";
+ import type { Metadata } from "next";
+-import { headers } from "next/headers";
+ import Link from "next/link";
+ import { notFound } from "next/navigation";
+ import { getApprovedProjectBySlug } from "../../../db/repository";
+@@ -14,11 +14,8 @@
+   let project;
+   try { project = await getApprovedProjectBySlug(slug); } catch { project = null; }
+   if (!project) return { title: "Project not found — sundays" };
+-  const requestHeaders = await headers();
+-  const host = requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host") ?? "localhost:3000";
+-  const protocol = requestHeaders.get("x-forwarded-proto") ?? (host.includes("localhost") ? "http" : "https");
+   const imagePath = project.thumbnail_status === "ready" ? thumbnailUrl(project.thumbnail_storage_key) : null;
+-  const image = imagePath ? `${protocol}://${host}${imagePath}` : undefined;
++  const image = imagePath ? `https://offhours-gallery.badcolours.chatgpt.site${imagePath}` : undefined;
+   return {
+     title: `${project.title} — sundays`,
+     description: project.short_description,
+@@ -29,29 +26,28 @@
+ 
+ export default async function ProjectPage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<{ reported?: string; report_limit?: string }> }) {
+   const { slug } = await params;
+-  let project;
+-  try { project = await getApprovedProjectBySlug(slug); } catch { project = null; }
++  const project = await getApprovedProjectBySlug(slug);
+   if (!project) notFound();
+   const { reported, report_limit: reportLimit } = await searchParams;
+   return (
+     <main>
+       <SiteNav />
+-      <article className="project-detail shell">
++      <article id="content" tabIndex={-1} className="project-detail shell">
+         <div className="project-detail-index">PROJECT / {project.slug.toUpperCase()}</div>
+         <a className="project-detail-image" href={project.live_url} target="_blank" rel="noopener noreferrer"><ProjectThumbnail project={project} /></a>
+         <div className="project-detail-copy">
+           <h1>{project.title}</h1>
+           <p>{project.short_description}</p>
+           <div className="project-creator-line">
+-            <img src={project.avatar_url} alt="" />
++            <CreatorAvatar src={project.avatar_url} name={project.display_name ?? "Creator"} />
+             <span><Link href={`/maker/${project.github_handle}`}>{project.display_name}</Link></span>
+-            {project.verification_status === "verified" && <span className="verification-mark">Verified maker</span>}
++            {project.verification_status === "verified" && <span className="verification-mark" title="The repository belongs to this GitHub account; the live site is not verified.">Repository matched</span>}
+           </div>
+           {project.repository_url && <a className="project-repository-link" href={project.repository_url} target="_blank" rel="noopener noreferrer">GitHub repository ↗</a>}
+           <a className="mvp-button primary" href={project.live_url} target="_blank" rel="noopener noreferrer">Launch project ↗</a>
+           <small>Published {project.published_at ? new Date(project.published_at).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }) : "on Sundays"}</small>
+         </div>
+-        <details className="report-control">
++        <details className="report-control" open={Boolean(reported || reportLimit)}>
+           <summary>Report a problem</summary>
+           {reported ? <p>Thanks. The report is queued for review; the project remains available until it is checked.</p> : reportLimit ? <p>Too many reports were sent from this browser. Please try again later.</p> : (
+             <form action={`/api/projects/${project.id}/report`} method="post">
+--- a/app/submit/page.tsx
++++ b/app/submit/page.tsx
+@@ -1,3 +1,5 @@
++import { CreatorAvatar } from "../CreatorAvatar";
++import { ProjectForm } from "../ProjectForm";
+ import Link from "next/link";
+ import { currentCreator, githubAuthConfigured } from "../../lib/auth";
+ import { SiteNav } from "../SiteNav";
+@@ -23,25 +25,25 @@
+   return (
+     <main>
+       <SiteNav />
+-      <section className="mvp-page shell">
++      <section id="content" tabIndex={-1} className="mvp-page shell">
+         <span className="section-number">SHARE / A PROJECT</span>
+         <div className="mvp-intro"><h1>Made after hours?<br />Show us.</h1><p>Your profile is yours and goes live when you join. Project review only determines what appears in the gallery.</p></div>
+         {error && <div className="form-notice error" role="alert">{authErrors[error] ?? error}</div>}
+         {!creator ? (
+           <div className="signin-panel">
+             <div><h2>Create your profile first.</h2><p>One GitHub sign-in makes your public maker page immediately. We request no repository access and never ingest or deploy code.</p></div>
+-            {configured ? <a className="mvp-button primary" href={`/api/auth/github/start?return_to=${encodeURIComponent(returnTo || "/submit")}`}>Log in</a> : <span className="mvp-button disabled" aria-disabled="true">Login unavailable</span>}
++            {configured ? <a className="mvp-button primary" href={`/api/auth/github/start?return_to=${encodeURIComponent(returnTo || "/submit")}`}>Log in</a> : <p className="form-notice" role="status">GitHub sign-in is temporarily unavailable. <Link href="/explore">Browse the collection ↗</Link></p>}
+           </div>
+         ) : (
+-          <form className="submission-form" action="/api/projects" method="post">
+-            <div className="signed-in-line"><img src={creator.avatar_url} alt="" /><span>Submitting as <b>{creator.display_name}</b> · @{creator.github_handle}</span><Link href="/dashboard">View dashboard</Link></div>
+-            <label>Live project URL<input name="live_url" type="url" inputMode="url" defaultValue={prefill(liveUrl, 500)} placeholder="https://your-project.example" required /></label>
+-            <label>GitHub repository <small>Optional · personal repositories are verified automatically</small><input name="repository_url" type="url" inputMode="url" defaultValue={prefill(repositoryUrl, 500)} placeholder={`https://github.com/${creator.github_handle}/project`} /></label>
++          <ProjectForm className="submission-form" action="/api/projects">
++            <div className="signed-in-line"><CreatorAvatar src={creator.avatar_url} name={creator.display_name} /><span>Submitting as <b>{creator.display_name}</b> · @{creator.github_handle}</span><Link href="/dashboard">View dashboard</Link></div>
++            <label>Live project URL<input name="live_url" maxLength={2048} type="url" inputMode="url" defaultValue={prefill(liveUrl, 500)} placeholder="https://your-project.example" required /></label>
++            <label>GitHub repository <small>Optional · we match public repositories to your GitHub account</small><input name="repository_url" maxLength={500} type="url" inputMode="url" defaultValue={prefill(repositoryUrl, 500)} placeholder={`https://github.com/${creator.github_handle}/project`} /></label>
+             <label>Project title<input name="title" type="text" defaultValue={prefill(title, 80)} minLength={2} maxLength={80} required /></label>
+             <label>Short description<textarea name="description" defaultValue={prefill(description, 240)} minLength={10} maxLength={240} rows={4} required /></label>
+             <p className="permission-copy">By sharing, you confirm the public page is yours and grant Sundays permission to display a promotional image of it. It appears on your profile immediately. Gallery inclusion is reviewed separately.</p>
+             <button className="mvp-button primary" type="submit">Share on profile ↗</button>
+-          </form>
++          </ProjectForm>
+         )}
+       </section>
+     </main>
+--- a/app/thumbnail/[...key]/route.ts
++++ b/app/thumbnail/[...key]/route.ts
+@@ -7,10 +7,14 @@
+   const bucket = bindings().THUMBNAILS;
+   if (!bucket) return new NextResponse("Thumbnail storage unavailable", { status: 503 });
+   const { key } = await params;
+-  const object = await bucket.get(key.join("/"));
++  const storageKey = key.join("/");
++  if (!/^projects\/[a-zA-Z0-9-]+\/[a-zA-Z0-9-]+\.(png|webp|jpg)$/.test(storageKey)) return new NextResponse("Not found", { status:404 });
++  const object = await bucket.get(storageKey);
+   if (!object) return new NextResponse("Not found", { status: 404 });
+   const headers = new Headers();
+   object.writeHttpMetadata(headers);
++  const type = headers.get("content-type");
++  if (!["image/png", "image/webp", "image/jpeg"].includes(type ?? "")) return new NextResponse("Unsupported image", {status:415});
+   headers.set("etag", object.httpEtag);
+   headers.set("cache-control", "public, max-age=31536000, immutable");
+   headers.set("x-content-type-options", "nosniff");
+--- a/db/repository.ts
++++ b/db/repository.ts
+@@ -80,135 +80,41 @@
+   return databaseBinding;
+ }
+ 
+-const schemaStatements = [
+-  `CREATE TABLE IF NOT EXISTS creators (
+-    id TEXT PRIMARY KEY NOT NULL,
+-    github_id TEXT NOT NULL,
+-    github_handle TEXT NOT NULL,
+-    display_name TEXT NOT NULL,
+-    avatar_url TEXT NOT NULL,
+-    github_profile_url TEXT NOT NULL,
+-    created_at TEXT NOT NULL,
+-    updated_at TEXT NOT NULL
+-  )`,
+-  `CREATE UNIQUE INDEX IF NOT EXISTS creators_github_id_idx ON creators (github_id)`,
+-  `CREATE UNIQUE INDEX IF NOT EXISTS creators_github_handle_idx ON creators (github_handle)`,
+-  `CREATE TABLE IF NOT EXISTS projects (
+-    id TEXT PRIMARY KEY NOT NULL,
+-    creator_id TEXT NOT NULL REFERENCES creators(id) ON DELETE CASCADE,
+-    slug TEXT NOT NULL,
+-    title TEXT NOT NULL,
+-    short_description TEXT NOT NULL,
+-    live_url TEXT NOT NULL,
+-    repository_url TEXT,
+-    verification_status TEXT NOT NULL DEFAULT 'unverified',
+-    profile_status TEXT NOT NULL DEFAULT 'visible',
+-    moderation_status TEXT NOT NULL DEFAULT 'submitted',
+-    thumbnail_status TEXT NOT NULL DEFAULT 'pending',
+-    thumbnail_storage_key TEXT,
+-    thumbnail_error TEXT,
+-    moderation_note TEXT,
+-    last_checked_at TEXT,
+-    last_check_status TEXT NOT NULL DEFAULT 'unchecked',
+-    consecutive_check_failures INTEGER NOT NULL DEFAULT 0,
+-    created_at TEXT NOT NULL,
+-    updated_at TEXT NOT NULL,
+-    published_at TEXT
+-  )`,
+-  `CREATE UNIQUE INDEX IF NOT EXISTS projects_slug_idx ON projects (slug)`,
+-  `CREATE INDEX IF NOT EXISTS projects_creator_idx ON projects (creator_id)`,
+-  `CREATE INDEX IF NOT EXISTS projects_creator_profile_idx ON projects (creator_id, profile_status)`,
+-  `CREATE INDEX IF NOT EXISTS projects_status_published_idx ON projects (moderation_status, published_at)`,
+-  `CREATE TABLE IF NOT EXISTS sessions (
+-    token_hash TEXT PRIMARY KEY NOT NULL,
+-    creator_id TEXT NOT NULL REFERENCES creators(id) ON DELETE CASCADE,
+-    created_at TEXT NOT NULL,
+-    expires_at TEXT NOT NULL
+-  )`,
+-  `CREATE INDEX IF NOT EXISTS sessions_creator_idx ON sessions (creator_id)`,
+-  `CREATE TABLE IF NOT EXISTS oauth_states (
+-    state_hash TEXT PRIMARY KEY NOT NULL,
+-    return_to TEXT NOT NULL,
+-    created_at TEXT NOT NULL,
+-    expires_at TEXT NOT NULL
+-  )`,
+-  `CREATE TABLE IF NOT EXISTS project_reports (
+-    id TEXT PRIMARY KEY NOT NULL,
+-    project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+-    reason TEXT NOT NULL,
+-    details TEXT,
+-    status TEXT NOT NULL DEFAULT 'open',
+-    created_at TEXT NOT NULL
+-  )`,
+-  `CREATE INDEX IF NOT EXISTS project_reports_project_idx ON project_reports (project_id, status)`,
+-  `CREATE TABLE IF NOT EXISTS report_rate_limits (
+-    fingerprint TEXT PRIMARY KEY NOT NULL,
+-    window_start TEXT NOT NULL,
+-    count INTEGER NOT NULL DEFAULT 0
+-  )`,
+-];
+-
+-const projectUpgradeStatements = [
+-  "ALTER TABLE projects ADD COLUMN repository_url TEXT",
+-  "ALTER TABLE projects ADD COLUMN verification_status TEXT NOT NULL DEFAULT 'unverified'",
+-  "ALTER TABLE projects ADD COLUMN profile_status TEXT NOT NULL DEFAULT 'visible'",
+-  "ALTER TABLE projects ADD COLUMN last_checked_at TEXT",
+-  "ALTER TABLE projects ADD COLUMN last_check_status TEXT NOT NULL DEFAULT 'unchecked'",
+-  "ALTER TABLE projects ADD COLUMN consecutive_check_failures INTEGER NOT NULL DEFAULT 0",
+-];
+-
+-let initialized = false;
+-export async function ensureSchema() {
+-  if (initialized) return;
+-  const db = database();
+-  await db.batch(schemaStatements.map((sql) => db.prepare(sql)));
+-  for (const sql of projectUpgradeStatements) {
+-    try { await db.prepare(sql).run(); } catch { /* Column already exists. */ }
+-  }
+-  initialized = true;
+-}
+-
+ function joinedProjectSelect() {
+   return `SELECT projects.*, creators.github_handle, creators.display_name, creators.avatar_url, creators.github_profile_url
+     FROM projects JOIN creators ON creators.id = projects.creator_id`;
+ }
+ 
+ export async function listApprovedProjects(limit = 60): Promise<Project[]> {
+-  await ensureSchema();
+   const result = await database().prepare(`${joinedProjectSelect()}
+-    WHERE projects.moderation_status = 'approved'
++    WHERE projects.moderation_status = 'approved' AND projects.profile_status = 'visible' AND projects.moderation_status != 'unavailable'
+     ORDER BY projects.published_at DESC LIMIT ?`).bind(limit).all<Project>();
+   return result.results;
+ }
+ 
+ export async function getApprovedProjectBySlug(slug: string): Promise<Project | null> {
+-  await ensureSchema();
+   return await database().prepare(`${joinedProjectSelect()}
+-    WHERE projects.slug = ? AND projects.moderation_status = 'approved' LIMIT 1`).bind(slug).first<Project>();
++    WHERE projects.slug = ? AND projects.moderation_status = 'approved' AND projects.profile_status = 'visible' LIMIT 1`).bind(slug).first<Project>();
+ }
+ 
+ export async function getCreatorByHandle(handle: string): Promise<Creator | null> {
+-  await ensureSchema();
+   return await database().prepare("SELECT * FROM creators WHERE lower(github_handle) = lower(?) LIMIT 1").bind(handle).first<Creator>();
+ }
+ 
+ export async function listVisibleProjectsForCreator(creatorId: string): Promise<Project[]> {
+-  await ensureSchema();
+   const result = await database().prepare(`${joinedProjectSelect()}
+-    WHERE projects.creator_id = ? AND projects.profile_status = 'visible'
++    WHERE projects.creator_id = ? AND projects.profile_status = 'visible' AND projects.moderation_status != 'unavailable'
+     ORDER BY projects.created_at DESC`).bind(creatorId).all<Project>();
+   return result.results;
+ }
+ 
+ export async function getCreatorForSession(tokenHash: string): Promise<Creator | null> {
+-  await ensureSchema();
+   return await database().prepare(`SELECT creators.* FROM sessions
+     JOIN creators ON creators.id = sessions.creator_id
+     WHERE sessions.token_hash = ? AND sessions.expires_at > ? LIMIT 1`).bind(tokenHash, new Date().toISOString()).first<Creator>();
+ }
+ 
+ export async function createOAuthState(stateHash: string, returnTo: string) {
+-  await ensureSchema();
+   const now = new Date();
+   const expires = new Date(now.getTime() + 10 * 60 * 1000);
+   await database().prepare("INSERT INTO oauth_states (state_hash, return_to, created_at, expires_at) VALUES (?, ?, ?, ?)")
+@@ -216,11 +122,9 @@
+ }
+ 
+ export async function consumeOAuthState(stateHash: string): Promise<string | null> {
+-  await ensureSchema();
+-  const db = database();
+-  const state = await db.prepare("SELECT return_to FROM oauth_states WHERE state_hash = ? AND expires_at > ? LIMIT 1")
++  const db = database();
++  const state = await db.prepare("DELETE FROM oauth_states WHERE state_hash = ? AND expires_at > ? RETURNING return_to")
+     .bind(stateHash, new Date().toISOString()).first<{ return_to: string }>();
+-  await db.prepare("DELETE FROM oauth_states WHERE state_hash = ?").bind(stateHash).run();
+   return state?.return_to ?? null;
+ }
+ 
+@@ -231,7 +135,6 @@
+   avatarUrl: string;
+   profileUrl: string;
+ }): Promise<Creator> {
+-  await ensureSchema();
+   const db = database();
+   const existing = await db.prepare("SELECT id FROM creators WHERE github_id = ? LIMIT 1").bind(profile.githubId).first<{ id: string }>();
+   const id = existing?.id ?? crypto.randomUUID();
+@@ -247,7 +150,6 @@
+ }
+ 
+ export async function createSession(tokenHash: string, creatorId: string) {
+-  await ensureSchema();
+   const now = new Date();
+   const expires = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+   await database().prepare("INSERT INTO sessions (token_hash, creator_id, created_at, expires_at) VALUES (?, ?, ?, ?)")
+@@ -255,7 +157,6 @@
+ }
+ 
+ export async function deleteSession(tokenHash: string) {
+-  await ensureSchema();
+   await database().prepare("DELETE FROM sessions WHERE token_hash = ?").bind(tokenHash).run();
+ }
+ 
+@@ -276,59 +177,51 @@
+ }
+ 
+ export async function createProject(input: { creatorId: string; title: string; description: string; liveUrl: string; repositoryUrl: string | null; verificationStatus: VerificationStatus }): Promise<Project> {
+-  await ensureSchema();
+   const id = crypto.randomUUID();
+   const slug = await uniqueSlug(input.title);
+   const now = new Date().toISOString();
+   await database().prepare(`INSERT INTO projects
+     (id, creator_id, slug, title, short_description, live_url, repository_url, verification_status, profile_status, moderation_status, thumbnail_status, last_checked_at, last_check_status, consecutive_check_failures, created_at, updated_at)
+-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'visible', 'submitted', 'pending', ?, 'healthy', 0, ?, ?)`)
+-    .bind(id, input.creatorId, slug, input.title, input.description, input.liveUrl, input.repositoryUrl, input.verificationStatus, now, now, now).run();
++    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'visible', 'submitted', 'pending', NULL, 'unchecked', 0, ?, ?)`)
++    .bind(id, input.creatorId, slug, input.title, input.description, input.liveUrl, input.repositoryUrl, input.verificationStatus, now, now).run();
+   return (await getProjectById(id))!;
+ }
+ 
+ export async function getProjectById(id: string): Promise<Project | null> {
+-  await ensureSchema();
+   return await database().prepare(`${joinedProjectSelect()} WHERE projects.id = ? LIMIT 1`).bind(id).first<Project>();
+ }
+ 
+ export async function getOwnedProject(id: string, creatorId: string): Promise<Project | null> {
+-  await ensureSchema();
+   return await database().prepare(`${joinedProjectSelect()} WHERE projects.id = ? AND projects.creator_id = ? LIMIT 1`).bind(id, creatorId).first<Project>();
+ }
+ 
+ export async function listProjectsForOwner(creatorId: string): Promise<Project[]> {
+-  await ensureSchema();
+   const result = await database().prepare(`${joinedProjectSelect()} WHERE projects.creator_id = ? ORDER BY projects.created_at DESC`)
+     .bind(creatorId).all<Project>();
+   return result.results;
+ }
+ 
+ export async function updateOwnedProject(id: string, creatorId: string, input: { title: string; description: string; liveUrl: string; repositoryUrl: string | null; verificationStatus: VerificationStatus }) {
+-  await ensureSchema();
+   const project = await getOwnedProject(id, creatorId);
+   if (!project) return false;
+   const nextStatus: ModerationStatus = project.moderation_status === "approved" ? "submitted" : project.moderation_status === "unavailable" ? "submitted" : project.moderation_status;
+   const now = new Date().toISOString();
+-  await database().prepare(`UPDATE projects SET title = ?, short_description = ?, live_url = ?, repository_url = ?, verification_status = ?, moderation_status = ?, moderation_note = NULL, last_checked_at = ?, last_check_status = 'healthy', consecutive_check_failures = 0, updated_at = ? WHERE id = ? AND creator_id = ?`)
+-    .bind(input.title, input.description, input.liveUrl, input.repositoryUrl, input.verificationStatus, nextStatus, now, now, id, creatorId).run();
++  await database().prepare(`UPDATE projects SET title = ?, short_description = ?, live_url = ?, repository_url = ?, verification_status = ?, moderation_status = ?, moderation_note = NULL, last_checked_at = NULL, last_check_status = 'unchecked', consecutive_check_failures = 0, updated_at = ? WHERE id = ? AND creator_id = ?`)
++    .bind(input.title, input.description, input.liveUrl, input.repositoryUrl, input.verificationStatus, nextStatus, now, id, creatorId).run();
+   return true;
+ }
+ 
+ export async function withdrawOwnedProject(id: string, creatorId: string) {
+-  await ensureSchema();
+   await database().prepare("UPDATE projects SET profile_status = 'hidden', moderation_status = 'draft', published_at = NULL, updated_at = ? WHERE id = ? AND creator_id = ?")
+     .bind(new Date().toISOString(), id, creatorId).run();
+ }
+ 
+ export async function showOwnedProjectOnProfile(id: string, creatorId: string) {
+-  await ensureSchema();
+   await database().prepare("UPDATE projects SET profile_status = 'visible', updated_at = ? WHERE id = ? AND creator_id = ?")
+     .bind(new Date().toISOString(), id, creatorId).run();
+ }
+ 
+ export async function submitOwnedProjectToGallery(id: string, creatorId: string) {
+-  await ensureSchema();
+   const project = await getOwnedProject(id, creatorId);
+   if (!project || project.profile_status !== "visible" || !["draft", "declined"].includes(project.moderation_status)) return false;
+   await database().prepare("UPDATE projects SET moderation_status = 'submitted', moderation_note = NULL, updated_at = ? WHERE id = ? AND creator_id = ?")
+@@ -336,18 +229,18 @@
+   return true;
+ }
+ 
+-export async function setThumbnailState(id: string, status: ThumbnailStatus, key: string | null, error: string | null) {
+-  await ensureSchema();
+-  await database().prepare("UPDATE projects SET thumbnail_status = ?, thumbnail_storage_key = ?, thumbnail_error = ?, updated_at = ? WHERE id = ?")
+-    .bind(status, key, error, new Date().toISOString(), id).run();
+-}
+-
+-export async function queueThumbnail(id: string) {
+-  await setThumbnailState(id, "pending", null, null);
++export async function setThumbnailState(id: string, status: ThumbnailStatus, key: string | null, error: string | null, expectedUrl: string, expectedVersion: string) {
++  const result = await database().prepare("UPDATE projects SET thumbnail_status = ?, thumbnail_storage_key = COALESCE(?, thumbnail_storage_key), thumbnail_error = ? WHERE id = ? AND live_url = ? AND updated_at = ?")
++    .bind(status, key, error, id, expectedUrl, expectedVersion).run();
++  return result.meta.changes > 0;
++}
++
++export async function queueThumbnail(id: string, clear = false) {
++  await database().prepare("UPDATE projects SET thumbnail_status = 'pending', thumbnail_storage_key = CASE WHEN ? THEN NULL ELSE thumbnail_storage_key END, thumbnail_error = NULL, updated_at = ? WHERE id = ?")
++    .bind(clear ? 1 : 0, new Date().toISOString(), id).run();
+ }
+ 
+ export async function listProjectsForModeration(): Promise<Project[]> {
+-  await ensureSchema();
+   const result = await database().prepare(`${joinedProjectSelect()}
+     WHERE projects.moderation_status IN ('submitted', 'approved', 'declined', 'unavailable')
+     ORDER BY CASE projects.moderation_status WHEN 'submitted' THEN 0 ELSE 1 END, projects.updated_at DESC`).all<Project>();
+@@ -355,7 +248,6 @@
+ }
+ 
+ export async function listProjectsForHealthCheck(limit = 12): Promise<Project[]> {
+-  await ensureSchema();
+   const result = await database().prepare(`${joinedProjectSelect()}
+     WHERE projects.moderation_status = 'approved'
+       OR (projects.moderation_status = 'unavailable' AND projects.moderation_note LIKE 'Automatic link check:%')
+@@ -365,22 +257,19 @@
+ }
+ 
+ export async function moderateProject(id: string, action: "approve" | "decline" | "unavailable" | "restore", note: string | null) {
+-  await ensureSchema();
+   const now = new Date().toISOString();
+   const status: ModerationStatus = action === "approve" || action === "restore" ? "approved" : action === "decline" ? "declined" : "unavailable";
+   const published = status === "approved" ? now : null;
+-  await database().prepare(`UPDATE projects SET moderation_status = ?, moderation_note = ?, published_at = CASE WHEN ? = 'approved' THEN COALESCE(published_at, ?) ELSE NULL END, updated_at = ? WHERE id = ?`)
++  await database().prepare(`UPDATE projects SET moderation_status = ?, moderation_note = ?, published_at = CASE WHEN ? = 'approved' THEN COALESCE(published_at, ?) ELSE NULL END, updated_at = ? WHERE id = ? AND profile_status = 'visible'`)
+     .bind(status, note, status, published, now, id).run();
+ }
+ 
+ export async function createReport(projectId: string, reason: string, details: string | null) {
+-  await ensureSchema();
+   await database().prepare("INSERT INTO project_reports (id, project_id, reason, details, status, created_at) VALUES (?, ?, ?, ?, 'open', ?)")
+     .bind(crypto.randomUUID(), projectId, reason, details, new Date().toISOString()).run();
+ }
+ 
+ export async function consumeReportAllowance(fingerprint: string, limit = 5) {
+-  await ensureSchema();
+   const now = new Date().toISOString();
+   const db = database();
+   const cutoff = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
+@@ -394,7 +283,6 @@
+ }
+ 
+ export async function listOpenReports(): Promise<ProjectReport[]> {
+-  await ensureSchema();
+   const result = await database().prepare(`SELECT project_reports.*, projects.title AS project_title, projects.slug AS project_slug,
+     projects.live_url AS project_live_url, creators.github_handle, creators.display_name
+     FROM project_reports
+@@ -406,7 +294,6 @@
+ }
+ 
+ export async function resolveProjectReport(reportId: string, action: "reviewed" | "dismissed" | "unavailable") {
+-  await ensureSchema();
+   const db = database();
+   const report = await db.prepare("SELECT project_id, reason FROM project_reports WHERE id = ? AND status = 'open' LIMIT 1")
+     .bind(reportId).first<{ project_id: string; reason: string }>();
+@@ -422,7 +309,6 @@
+ }
+ 
+ export async function setProjectLinkHealth(id: string, healthy: boolean, message?: string) {
+-  await ensureSchema();
+   const db = database();
+   const project = await db.prepare("SELECT consecutive_check_failures, moderation_status, moderation_note FROM projects WHERE id = ? LIMIT 1")
+     .bind(id).first<{ consecutive_check_failures: number; moderation_status: ModerationStatus; moderation_note: string | null }>();
+--- a/lib/auth.ts
++++ b/lib/auth.ts
+@@ -20,11 +20,7 @@
+   const cookieStore = await cookies();
+   const rawToken = cookieStore.get(SESSION_COOKIE)?.value;
+   if (!rawToken) return null;
+-  try {
+-    return await getCreatorForSession(await sha256(rawToken));
+-  } catch {
+-    return null;
+-  }
++  return await getCreatorForSession(await sha256(rawToken));
+ }
+ 
+ export async function requireCreator(returnTo = "/dashboard"): Promise<Creator> {
+--- /dev/null
++++ b/lib/form-response.ts
+@@ -0,0 +1,12 @@
++import { NextResponse } from "next/server";
++
++export function formRedirect(request: Request, location: string) {
++  if (request.headers.get("accept")?.includes("application/json")) return NextResponse.json({ location });
++  return NextResponse.redirect(new URL(location,request.url),303);
++}
++
++export function formFailure(request: Request, path: string, error: unknown) {
++  const message = error instanceof Error && error.name === "InputError" ? error.message : "Your project couldn’t be saved. Please try again.";
++  if (request.headers.get("accept")?.includes("application/json")) return NextResponse.json({error:message},{status:422});
++  return NextResponse.redirect(new URL(`${path}?error=${encodeURIComponent(message)}`,request.url),303);
++}
+--- a/lib/github-public.ts
++++ b/lib/github-public.ts
+@@ -51,6 +51,7 @@
+   endpoint.searchParams.set("per_page", "100");
+   const response = await fetch(endpoint, {
+     cache: "no-store",
++    signal: AbortSignal.timeout(6_000),
+     headers: {
+       Accept: "application/vnd.github+json",
+       "X-GitHub-Api-Version": "2022-11-28",
+--- /dev/null
++++ b/lib/image-response.ts
+@@ -0,0 +1,27 @@
++const MAX_IMAGE_BYTES = 5_000_000;
++export async function readCaptureImage(response: Response) {
++  const type = response.headers.get("content-type")?.split(";")[0].toLowerCase() ?? "";
++  if (!["image/png", "image/webp", "image/jpeg"].includes(type)) { await response.body?.cancel(); throw new Error("The capture service must return PNG, WebP, or JPEG."); }
++  if (Number(response.headers.get("content-length") ?? 0) > MAX_IMAGE_BYTES) { await response.body?.cancel(); throw new Error("Captured image is too large."); }
++  const reader = response.body?.getReader();
++  if (!reader) throw new Error("The capture is empty.");
++  const parts: Uint8Array[] = [];
++  let size = 0;
++  try {
++    while (true) {
++      const {done, value} = await reader.read();
++      if (done) break;
++      size += value.length;
++      if (size > MAX_IMAGE_BYTES) throw new Error("Captured image is too large.");
++      parts.push(value);
++    }
++  } finally { await reader.cancel(); reader.releaseLock(); }
++  const bytes = new Uint8Array(size);
++  let offset = 0;
++  for (const part of parts) { bytes.set(part,offset); offset += part.length; }
++  const signature = type === "image/png" ? bytes[0] === 137 && bytes[1] === 80 && bytes[2] === 78 && bytes[3] === 71
++    : type === "image/jpeg" ? bytes[0] === 255 && bytes[1] === 216 && bytes[2] === 255
++    : String.fromCharCode(...bytes.slice(0,4)) === "RIFF" && String.fromCharCode(...bytes.slice(8,12)) === "WEBP";
++  if (!signature) throw new Error("The capture service returned an invalid image.");
++  return { bytes, contentType:type, extension:type === "image/png" ? "png" : type === "image/webp" ? "webp" : "jpg" };
++}
+--- a/lib/project-input.ts
++++ b/lib/project-input.ts
+@@ -1,13 +1,15 @@
+-import { validatePublicUrl } from "./url-safety";
++import { validatePublicUrl } from "./url-safety.ts";
+ import type { VerificationStatus } from "../db/repository";
+ 
+ export function readProjectFields(form: FormData) {
++  try {
+   const title = String(form.get("title") ?? "").trim();
+   const description = String(form.get("description") ?? "").trim();
+   const rawUrl = String(form.get("live_url") ?? "").trim();
+   const rawRepositoryUrl = String(form.get("repository_url") ?? "").trim();
+   if (title.length < 2 || title.length > 80) throw new Error("Project title must be between 2 and 80 characters.");
+   if (description.length < 10 || description.length > 240) throw new Error("Description must be between 10 and 240 characters.");
++  if (rawUrl.length > 2048 || rawRepositoryUrl.length > 500) throw new Error("That URL is too long.");
+   const parsed = validatePublicUrl(rawUrl);
+   let repositoryUrl: string | null = null;
+   if (rawRepositoryUrl) {
+@@ -20,6 +22,9 @@
+     repositoryUrl = repository.toString();
+   }
+   return { title, description, liveUrl: parsed.toString(), repositoryUrl };
++  } catch (cause) {
++    const error = new Error(cause instanceof Error ? cause.message : "Check the project fields."); error.name = "InputError"; throw error;
++  }
+ }
+ 
+ export async function verifyProjectFields(form: FormData, githubHandle: string) {
+@@ -28,7 +33,19 @@
+   let verificationStatus: VerificationStatus = "unverified";
+   if (repositoryUrl) {
+     const owner = new URL(repositoryUrl).pathname.split("/").filter(Boolean)[0] ?? "";
+-    if (owner.toLowerCase() === githubHandle.toLowerCase()) verificationStatus = "verified";
++    if (owner.toLowerCase() === githubHandle.toLowerCase()) {
++      try {
++        const path = new URL(repositoryUrl).pathname;
++        const response = await fetch(`https://api.github.com/repos${path}`, {
++          headers: { accept: "application/vnd.github+json", "user-agent": "Sundays-Gallery" },
++          signal: AbortSignal.timeout(5_000),
++        });
++        if (response.ok) {
++          const repository = await response.json() as { owner?: { login?: string }; private?: boolean };
++          if (repository.private === false && repository.owner?.login?.toLowerCase() === githubHandle.toLowerCase()) verificationStatus = "verified";
++        }
++      } catch { /* A GitHub outage must not prevent sharing an unverified project. */ }
++    }
+   }
+   return { ...fields, repositoryUrl, verificationStatus };
+ }
+--- /dev/null
++++ b/lib/request-security.ts
+@@ -0,0 +1,35 @@
++/** Cookie-authenticated writes must originate from this site. */
++export function isSameOriginMutation(request: Request) {
++  if (request.headers.get("sec-fetch-site") === "cross-site") return false;
++  const origin = request.headers.get("origin");
++  if (!origin) return false;
++  try { return new URL(origin).origin === new URL(request.url).origin; }
++  catch { return false; }
++}
++
++export function mutationGuard(request: Request) {
++  if (!isSameOriginMutation(request)) return new Response("This request must come from Sundays. Reload the page and try again.", { status: 403 });
++  const length = Number(request.headers.get("content-length") ?? 0);
++  if (length > 16_384) return new Response("The form is too large.", { status: 413 });
++  return null;
++}
++
++export async function readBoundedFormData(request: Request) {
++  const reader = request.body?.getReader();
++  if (!reader) return new FormData();
++  const chunks: Uint8Array[] = [];
++  let size = 0;
++  try {
++    while (true) {
++      const { value, done } = await reader.read();
++      if (done) break;
++      size += value.byteLength;
++      if (size > 16_384) throw new Error("The form is too large.");
++      chunks.push(value);
++    }
++  } finally { await reader.cancel(); reader.releaseLock(); }
++  const bytes = new Uint8Array(size);
++  let offset = 0;
++  for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.length; }
++  return new Response(bytes, { headers: { "content-type": request.headers.get("content-type") ?? "application/x-www-form-urlencoded" } }).formData();
++}
+--- /dev/null
++++ b/lib/thumbnail-url.ts
+@@ -0,0 +1,3 @@
++export function thumbnailUrl(storageKey: string | null) {
++  return storageKey ? `/thumbnail/${storageKey.split("/").map(encodeURIComponent).join("/")}` : null;
++}
+--- a/lib/thumbnails.ts
++++ b/lib/thumbnails.ts
+@@ -1,65 +1,35 @@
+-import { bindings, getProjectById, setProjectLinkHealth, setThumbnailState } from "../db/repository";
++import { bindings, getProjectById, setThumbnailState } from "../db/repository";
+ import { validatePublicUrl } from "./url-safety";
+-
+-const MAX_THUMBNAIL_BYTES = 5_000_000;
+-const DEFAULT_SCREENSHOT_API_URL = "https://webshot.site/api/capture";
++import { readCaptureImage } from "./image-response";
++export { thumbnailUrl } from "./thumbnail-url";
+ 
+ export async function captureProjectThumbnail(projectId: string) {
+   const project = await getProjectById(projectId);
+   if (!project) return;
+   const runtime = bindings();
+-  if (!runtime.THUMBNAILS) {
+-    await setThumbnailState(projectId, "failed", null, "Thumbnail storage is not configured.");
+-    return;
+-  }
++  const finish = (status: "ready" | "failed", key: string | null, error: string | null) => setThumbnailState(projectId,status,key,error,project.live_url,project.updated_at);
++  if (!runtime.THUMBNAILS) { await finish("failed",null,"Thumbnail storage is unavailable."); return; }
++  // Existing provider retained. A custom service must enforce network isolation
++  // for redirects and subresources, not just the initial URL.
++  const screenshotApiUrl = runtime.SCREENSHOT_API_URL || "https://webshot.site/api/capture";
++  const controller = new AbortController();
++  const timeout = setTimeout(() => controller.abort(),50_000);
+   try {
+     const safeUrl = validatePublicUrl(project.live_url).toString();
+-    const screenshotApiUrl = runtime.SCREENSHOT_API_URL ?? DEFAULT_SCREENSHOT_API_URL;
+     const isWebshot = new URL(screenshotApiUrl).hostname === "webshot.site";
+-    const controller = new AbortController();
+-    const timeout = setTimeout(() => controller.abort(), 50_000);
+-    let response: Response;
+-    try {
+-      response = await fetch(screenshotApiUrl, {
+-        method: "POST",
+-        headers: {
+-          "content-type": "application/json",
+-          accept: "image/webp,image/png,image/jpeg",
+-          ...(runtime.SCREENSHOT_API_TOKEN ? { authorization: `Bearer ${runtime.SCREENSHOT_API_TOKEN}` } : {}),
+-        },
+-        body: JSON.stringify(isWebshot ? {
+-          url: safeUrl,
+-          format: "webp",
+-          mode: "desktop_viewport",
+-        } : {
+-          url: safeUrl,
+-          viewport: { width: 1440, height: 1024 },
+-          output: { format: "webp", quality: 82, width: 1200, height: 850 },
+-          security: { blockPrivateNetworks: true, maxRedirects: 3 },
+-        }),
+-        signal: controller.signal,
+-      });
+-    } finally {
+-      clearTimeout(timeout);
+-    }
+-    if (!response.ok) throw new Error(`Capture service returned ${response.status}.`);
+-    const contentType = response.headers.get("content-type")?.split(";")[0] ?? "";
+-    if (!contentType.startsWith("image/")) throw new Error("Capture service did not return an image.");
+-    const declaredLength = Number(response.headers.get("content-length") ?? 0);
+-    if (declaredLength > MAX_THUMBNAIL_BYTES) throw new Error("Captured image is too large.");
+-    const bytes = await response.arrayBuffer();
+-    if (bytes.byteLength === 0 || bytes.byteLength > MAX_THUMBNAIL_BYTES) throw new Error("Captured image is empty or too large.");
+-    const extension = contentType === "image/webp" ? "webp" : contentType === "image/png" ? "png" : "jpg";
++    const response = await fetch(screenshotApiUrl, {
++      method:"POST", redirect:"error", signal:controller.signal,
++      headers:{"content-type":"application/json",accept:"image/webp,image/png,image/jpeg",...(runtime.SCREENSHOT_API_TOKEN ? {authorization:`Bearer ${runtime.SCREENSHOT_API_TOKEN}`} : {})},
++      body:JSON.stringify(isWebshot ? {url:safeUrl,format:"webp",mode:"desktop_viewport"} : {url:safeUrl,viewport:{width:1440,height:1024},output:{format:"webp",quality:82,width:1200,height:850},security:{blockPrivateNetworks:true,maxRedirects:3}}),
++    });
++    if (!response.ok) { await response.body?.cancel(); throw new Error("The preview service is temporarily unavailable. Please retry."); }
++    const {bytes,contentType,extension} = await readCaptureImage(response);
+     const key = `projects/${project.id}/${crypto.randomUUID()}.${extension}`;
+-    await runtime.THUMBNAILS.put(key, bytes, { httpMetadata: { contentType, cacheControl: "public, max-age=31536000, immutable" } });
+-    await setThumbnailState(projectId, "ready", key, null);
+-    await setProjectLinkHealth(projectId, true);
+-  } catch (error) {
+-    const message = error instanceof Error ? error.message : "Thumbnail capture failed.";
+-    await setThumbnailState(projectId, "failed", null, message.slice(0, 180));
+-  }
++    await runtime.THUMBNAILS.put(key,bytes,{httpMetadata:{contentType,cacheControl:"public, max-age=31536000, immutable"}});
++    const saved = await finish("ready",key,null);
++    // Late jobs may not overwrite newer edits; discard only their new object.
++    if (!saved) await runtime.THUMBNAILS.delete(key);
++  } catch {
++    await finish("failed",null,"The preview could not be captured. You can retry from your dashboard.");
++  } finally { clearTimeout(timeout); }
+ }
+-
+-export function thumbnailUrl(storageKey: string | null) {
+-  return storageKey ? `/thumbnail/${storageKey.split("/").map(encodeURIComponent).join("/")}` : null;
+-}
+--- a/lib/url-safety.ts
++++ b/lib/url-safety.ts
+@@ -11,11 +11,17 @@
+   const normalized = value.toLowerCase().replace(/^\[|\]$/g, "");
+   const ipv4 = parseIPv4(normalized);
+   if (ipv4) {
+-    const [a, b] = ipv4;
+-    return a === 0 || a === 10 || a === 127 || (a === 169 && b === 254) || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168) || a >= 224;
++    const [a, b, c] = ipv4;
++    return a === 0 || a === 10 || a === 127 || (a === 100 && b >= 64 && b <= 127) ||
++      (a === 169 && b === 254) || (a === 172 && b >= 16 && b <= 31) ||
++      (a === 192 && (b === 168 || b === 0 || (b === 88 && c === 99))) ||
++      (a === 198 && (b === 18 || b === 19 || (b === 51 && c === 100))) ||
++      (a === 203 && b === 0 && c === 113) || a >= 224;
+   }
+   if (!normalized.includes(":")) return false;
+-  return normalized === "::" || normalized === "::1" || normalized.startsWith("fc") || normalized.startsWith("fd") || /^fe[89ab]/.test(normalized) || normalized.startsWith("::ffff:127.") || normalized.startsWith("::ffff:10.") || normalized.startsWith("::ffff:192.168.");
++  // Only globally routable unicast IPv6 is allowed. Reject mapped, local,
++  // transition and documentation ranges, including hex-encoded mapped IPv4.
++  return !/^[23][0-9a-f]{3}:/.test(normalized) || /^200[12]:/.test(normalized) || normalized.startsWith("3fff:");
+ }
+ 
+ export function validatePublicUrl(value: string): URL {
+@@ -27,6 +33,7 @@
+   if (!hostname || hostname === "localhost" || !hostname.includes(".") || blockedHostSuffixes.some((suffix) => hostname.endsWith(suffix)) || isPrivateIp(hostname)) {
+     throw new Error("Local, private, or internal addresses are not accepted.");
+   }
++  if (url.port && url.port !== "80" && url.port !== "443") throw new Error("Use a public website on port 80 or 443.");
+   url.hash = "";
+   return url;
+ }
+@@ -36,6 +43,7 @@
+     if (isPrivateIp(hostname)) throw new Error("The URL resolves to a private address.");
+     return;
+   }
++  let resolved = false;
+   for (const type of ["A", "AAAA"]) {
+     const response = await fetch(`https://cloudflare-dns.com/dns-query?name=${encodeURIComponent(hostname)}&type=${type}`, {
+       headers: { accept: "application/dns-json" }, signal,
+@@ -43,8 +51,10 @@
+     if (!response.ok) throw new Error("The project host could not be verified.");
+     const payload = await response.json() as { Answer?: Array<{ type: number; data: string }> };
+     const addresses = (payload.Answer ?? []).filter((answer) => answer.type === 1 || answer.type === 28).map((answer) => answer.data);
++    resolved ||= addresses.length > 0;
+     if (addresses.some(isPrivateIp)) throw new Error("The URL resolves to a private address.");
+   }
++  if (!resolved) throw new Error("The project host has no public address.");
+ }
+ 
+ export async function probePublicUrl(value: string) {
+@@ -62,13 +72,14 @@
+       });
+       if (response.status >= 300 && response.status < 400) {
+         const location = response.headers.get("location");
++        await response.body?.cancel();
+         if (!location || redirectCount === 3) throw new Error("The project URL has an unsafe or excessive redirect chain.");
+         current = validatePublicUrl(new URL(location, current).toString());
+         continue;
+       }
+-      if (!response.ok) throw new Error(`The project URL returned ${response.status}.`);
++      if (!response.ok) { await response.body?.cancel(); throw new Error(`The project URL returned ${response.status}.`); }
+       const length = Number(response.headers.get("content-length") ?? 0);
+-      if (length > 2_000_000) throw new Error("The project response is too large to verify safely.");
++      if (length > 2_000_000) { await response.body?.cancel(); throw new Error("The project response is too large to verify safely."); }
+       await response.body?.cancel();
+       return current.toString();
+     }
+--- a/package-lock.json
++++ b/package-lock.json
+@@ -1,11 +1,11 @@
+ {
+-  "name": "site-creator-vinext-starter",
++  "name": "sundays-gallery",
+   "version": "0.1.0",
+   "lockfileVersion": 3,
+   "requires": true,
+   "packages": {
+     "": {
+-      "name": "site-creator-vinext-starter",
++      "name": "sundays-gallery",
+       "version": "0.1.0",
+       "dependencies": {
+         "drizzle-orm": "0.45.2",
+--- a/package.json
++++ b/package.json
+@@ -1,5 +1,5 @@
+ {
+-  "name": "site-creator-vinext-starter",
++  "name": "sundays-gallery",
+   "version": "0.1.0",
+   "private": true,
+   "engines": {
+@@ -9,9 +9,13 @@
+     "dev": "WRANGLER_LOG_PATH=.wrangler/wrangler.log vinext dev",
+     "build": "WRANGLER_LOG_PATH=.wrangler/wrangler.log vinext build",
+     "start": "WRANGLER_LOG_PATH=.wrangler/wrangler.log vinext start",
+-    "test": "npm run build && node --test tests/rendered-html.test.mjs",
++    "test": "node --test tests/*.test.mjs",
+     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
+-    "db:generate": "drizzle-kit generate"
++    "db:generate": "drizzle-kit generate",
++    "typecheck": "tsc --noEmit",
++    "db:local": "WRANGLER_LOG_PATH=.wrangler/migrate.log wrangler d1 migrations apply DB --local --config wrangler.local.jsonc",
++    "review:seed": "node scripts/seed-review.mjs",
++    "review:creator": "node scripts/review-creator.mjs"
+   },
+   "dependencies": {
+     "drizzle-orm": "0.45.2",
+--- /dev/null
++++ b/scripts/check-local.mjs
+@@ -0,0 +1,24 @@
++import assert from 'node:assert/strict';
++import { readFileSync } from 'node:fs';
++import { galleryProjects, projectSlug } from '../app/fixtures/demoGallery.ts';
++const base='http://localhost:3007';
++const {token}=JSON.parse(readFileSync('.wrangler/review-session.json','utf8'));
++const auth={cookie:`sundays_session=${token}`};
++let checks=0;
++const routes=['/','/explore','/archive','/about','/join','/submit','/demo','/demo/explore','/demo/archive','/demo/about','/maker/sundays-local-review','/project/local-field-study',...galleryProjects.map(p=>'/demo/'+projectSlug(p)),...new Set(galleryProjects.map(p=>'/demo/maker/'+p.handle))];
++for(let i=0;i<routes.length;i+=4) await Promise.all(routes.slice(i,i+4).map(async path=>{const r=await fetch(base+path);assert.equal(r.status,200,path);const html=await r.text();assert.ok(html.includes('<h1'),path);const nav=html.match(/<nav[\s\S]*?<\/nav>/)?.[0];if(nav)assert.ok(nav.includes(`href="${path.startsWith('/demo')?'/demo/explore':'/explore'}"`),path+' navigation');checks++;}));
++for(const path of ['/missing-page','/demo/missing-project','/demo/maker/missing-maker','/maker/missing-maker','/project/local-hidden']){const r=await fetch(base+path);assert.equal(r.status,404,path);checks++;}
++const dashboard=await fetch(base+'/dashboard',{headers:auth});assert.equal(dashboard.status,200);assert.match(await dashboard.text(),/Your shared projects/);checks++;
++const unsigned=await fetch(base+'/dashboard',{redirect:'manual'});assert.ok([302,303,307].includes(unsigned.status));checks++;
++for(const path of ['/api/projects','/api/projects/local-field','/api/projects/local-field/recapture','/api/admin/projects/local-field','/api/auth/signout','/api/projects/local-field/report']){const r=await fetch(base+path,{method:'POST',headers:{...auth,origin:'https://evil.example'},body:new URLSearchParams({action:'withdraw'})});assert.equal(r.status,403,path);checks++;}
++const post=(path,fields,headers={})=>fetch(base+path,{method:'POST',redirect:'manual',headers:{...auth,origin:base,...headers},body:new URLSearchParams(fields)});
++const denied=await post('/api/admin/projects/local-field',{action:'approve'});assert.equal(denied.status,403);checks++;
++const unknown=await post('/api/projects/not-owned',{action:'withdraw'});assert.equal(unknown.status,404);checks++;
++const invalid=await post('/api/projects',{title:'Broken test',description:'A local validation test.',live_url:'http://127.0.0.1'},{accept:'application/json'});assert.equal(invalid.status,422);assert.match((await invalid.json()).error,/private|internal/);checks++;
++const show=await post('/api/projects/local-hidden',{action:'show_profile'});assert.equal(show.status,303);
++assert.match(await(await fetch(base+'/maker/sundays-local-review')).text(),/A hidden project/);
++await post('/api/projects/local-hidden',{action:'withdraw'});
++assert.doesNotMatch(await(await fetch(base+'/maker/sundays-local-review')).text(),/A hidden project/);checks+=2;
++const thumbnail=await fetch(base+'/thumbnail/projects/local-field/review.png');assert.equal(thumbnail.status,200);assert.equal(thumbnail.headers.get('content-type'),'image/png');checks++;
++const report=await post('/api/projects/local-field/report',{reason:'other',details:'Local QA report — fictional sample only.'});assert.equal(report.status,303);const notice=await(await fetch(base+new URL(report.headers.get('location')).pathname+'?reported=1')).text();assert.match(notice,/<details[^>]*open/);checks++;
++console.log(`${checks} local HTTP and workflow checks passed, including ${routes.length} public routes.`);
+--- /dev/null
++++ b/scripts/review-creator.mjs
+@@ -0,0 +1,22 @@
++// Local QA only: exposes a fictional creator session on a separate loopback port.
++// This script is not an application route and is never bundled into the Worker.
++import { createServer } from 'node:http';
++import { readFileSync } from 'node:fs';
++const {token,expires}=JSON.parse(readFileSync('.wrangler/review-session.json','utf8'));
++if(Date.now()>=Date.parse(expires)) throw new Error('Run npm run review:seed to renew the local sample session.');
++const upstream='http://localhost:3007';
++createServer(async(req,res)=>{
++ try {
++  if(req.headers.host!=='localhost:3008'&&req.headers.host!=='127.0.0.1:3008'){res.writeHead(403).end();return;}
++  if(req.headers.origin && !['http://localhost:3008','http://127.0.0.1:3008'].includes(req.headers.origin)){res.writeHead(403).end();return;}
++  const headers=new Headers();for(const [k,v] of Object.entries(req.headers))if(v && !['host','connection','content-length','cookie'].includes(k))headers.set(k,Array.isArray(v)?v.join(','):v);
++  headers.set('cookie',`sundays_session=${token}`);
++  if(req.headers.origin) headers.set('origin',upstream);
++  const parts=[];let size=0;for await(const part of req){size+=part.length;if(size>16384){res.writeHead(413).end();return;}parts.push(part);}
++  const response=await fetch(new URL(req.url,upstream),{method:req.method,headers,body:['GET','HEAD'].includes(req.method)?undefined:Buffer.concat(parts),redirect:'manual'});
++  const out=Object.fromEntries(response.headers);delete out['content-encoding'];delete out['content-length'];delete out['transfer-encoding'];
++  if(out.location)out.location=out.location.replace(upstream,'http://localhost:3008');
++  out['cache-control']='private, no-store';
++  res.writeHead(response.status,out);res.end(Buffer.from(await response.arrayBuffer()));
++ } catch {res.writeHead(502).end('Start the Sundays preview on port 3007, then reload.');}
++}).listen(3008,'127.0.0.1',()=>console.log('Local sample creator review: http://localhost:3008/dashboard'));
+--- /dev/null
++++ b/scripts/seed-review.mjs
+@@ -0,0 +1,25 @@
++import { randomBytes, createHash } from 'node:crypto';
++import { mkdirSync, writeFileSync } from 'node:fs';
++import { spawnSync } from 'node:child_process';
++const token=randomBytes(32).toString('hex');
++const hash=createHash('sha256').update(token).digest('hex');
++const now=new Date().toISOString();
++const expiry=new Date(Date.now()+86400000).toISOString();
++mkdirSync('.wrangler',{recursive:true});
++const sql=`
++INSERT OR IGNORE INTO creators VALUES ('local-review','local-only','sundays-local-review','Local review creator','/favicon.svg','https://github.com/', '${now}','${now}');
++DELETE FROM sessions WHERE creator_id = 'local-review';
++INSERT INTO sessions VALUES ('${hash}','local-review','${now}','${expiry}');
++INSERT OR IGNORE INTO projects (id,creator_id,slug,title,short_description,live_url,moderation_status,profile_status,thumbnail_status,thumbnail_storage_key,created_at,updated_at,published_at)
++VALUES ('local-field','local-review','local-field-study','Field Study · local sample','A sample project for reviewing the Sundays creator flow.','https://offhours-gallery.badcolours.chatgpt.site/demo/field-study','approved','visible','ready','projects/local-field/review.png','${now}','${now}','${now}');
++INSERT OR IGNORE INTO projects (id,creator_id,slug,title,short_description,live_url,moderation_status,profile_status,thumbnail_status,created_at,updated_at)
++VALUES ('local-pending','local-review','local-pending','A project in review · local sample','Visible on the creator profile while gallery review is pending.','https://offhours-gallery.badcolours.chatgpt.site/demo/hush','submitted','visible','failed','${now}','${now}');
++INSERT OR IGNORE INTO projects (id,creator_id,slug,title,short_description,live_url,moderation_status,profile_status,thumbnail_status,created_at,updated_at)
++VALUES ('local-hidden','local-review','local-hidden','A hidden project · local sample','A private sample to test showing and hiding a project.','https://offhours-gallery.badcolours.chatgpt.site/demo/altitude','draft','hidden','failed','${now}','${now}');
++`;
++writeFileSync('.wrangler/review.sql',sql);
++function wrangler(args){const r=spawnSync('node_modules/.bin/wrangler',[...args,'--local','--config','wrangler.local.jsonc'],{stdio:'inherit',env:{...process.env,WRANGLER_LOG_PATH:'.wrangler/seed.log'}});if(r.status!==0) process.exit(r.status??1);}
++wrangler(['d1','execute','DB','--file','.wrangler/review.sql']);
++wrangler(['r2','object','put','site-creator-r2/projects/local-field/review.png','--file','public/explore-thumbs/35.png','--content-type','image/png']);
++writeFileSync('.wrangler/review-session.json',JSON.stringify({token,expires:expiry}),{mode:0o600});
++console.log('Local sample records are ready. Session expires in 24 hours.');
+--- /dev/null
++++ b/tests/d1-fixture.mjs
+@@ -0,0 +1,14 @@
++import { DatabaseSync } from 'node:sqlite';
++import { readFileSync } from 'node:fs';
++export const env={};
++export function resetDatabase(){
++ const sql=new DatabaseSync(':memory:');
++ sql.exec('PRAGMA foreign_keys=ON');
++ for(const file of ['0000_exotic_hulk.sql','0001_slippery_diamondback.sql','0002_neat_jane_foster.sql']) sql.exec(readFileSync(new URL('../drizzle/'+file,import.meta.url),'utf8'));
++ const prepare=(query)=>{
++  let args=[];const s=sql.prepare(query);
++  return {bind(...v){args=v;return this;},async first(){return s.get(...args)??null;},async all(){return {results:s.all(...args)};},async run(){return {meta:s.run(...args)};}};
++ };
++ env.DB={prepare,async batch(stmts){const results=[];for(const s of stmts)results.push(await s.run());return results;}};
++ return sql;
++}
+--- a/tests/rendered-html.test.mjs
++++ b/tests/rendered-html.test.mjs
+@@ -1,130 +1,13 @@
+-import assert from "node:assert/strict";
+-import { readFile } from "node:fs/promises";
+-import test from "node:test";
+-
+-test("anonymous gallery uses approved records while creator profiles stay open", async () => {
+-  const [page, gallery, maker, repository] = await Promise.all([
+-    readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
+-    readFile(new URL("../app/PublicGallery.tsx", import.meta.url), "utf8"),
+-    readFile(new URL("../app/maker/[handle]/page.tsx", import.meta.url), "utf8"),
+-    readFile(new URL("../db/repository.ts", import.meta.url), "utf8"),
+-  ]);
+-  assert.match(page, /listApprovedProjects\(6\)/);
+-  assert.match(gallery, /if \(projects\.length === 0\) return null/);
+-  assert.doesNotMatch(gallery, /OPEN DIRECTORY|Log in|Anyone can create a public maker profile/i);
+-  assert.match(maker, /listVisibleProjectsForCreator/);
+-  assert.match(repository, /profile_status = 'visible'/);
+-  assert.match(repository, /moderation_status = 'approved'/);
+-  assert.doesNotMatch(page + gallery, /Maya Chen|Theo Hart|001—056|Submit from GitHub/);
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import { existsSync,readFileSync } from 'node:fs';
++import { galleryProjects,projectSlug } from '../app/fixtures/demoGallery.ts';
++test('every demo thumbnail exists, every slug is unique, and repeated creators keep separate projects',()=>{
++ const slugs=new Set();for(const p of galleryProjects){assert.ok(!slugs.has(projectSlug(p)));slugs.add(projectSlug(p));if(p.thumbnail)assert.ok(existsSync(new URL('../public'+p.thumbnail,import.meta.url)),p.thumbnail);}
++ assert.ok(galleryProjects.filter(p=>p.handle==='arivale').length>1);
+ });
+-
+-test("submission page explains identity-only GitHub access", async () => {
+-  const [page, input] = await Promise.all([
+-    readFile(new URL("../app/submit/page.tsx", import.meta.url), "utf8"),
+-    readFile(new URL("../lib/project-input.ts", import.meta.url), "utf8"),
+-  ]);
+-  assert.match(page, /request no repository access/i);
+-  assert.match(page, /never ingest or deploy code/i);
+-  assert.match(page, /Share on profile/);
+-  assert.doesNotMatch(page, /Submit for review/);
+-  assert.match(page, /Login unavailable/);
+-  assert.match(page, /\/api\/auth\/github\/start/);
+-  assert.match(input, /validatePublicUrl/);
+-  assert.doesNotMatch(input, /probePublicUrl/);
++test('deployment is Sundays-only with persistent bindings and immutable existing migrations',()=>{
++ const config=JSON.parse(readFileSync(new URL('../.openai/hosting.json',import.meta.url),'utf8'));
++ assert.equal(config.project_id,'appgprj_6a6a635771fc8191af1955b18bd07801');assert.equal(config.d1,'DB');assert.equal(config.r2,'THUMBNAILS');
++ assert.ok(!existsSync(new URL('../app/api/schools',import.meta.url)));
+ });
+-
+-test("dashboard lists public GitHub repositories without private repository access", async () => {
+-  const [dashboard, thumbnail, github, createRoute, updateRoute] = await Promise.all([
+-    readFile(new URL("../app/dashboard/page.tsx", import.meta.url), "utf8"),
+-    readFile(new URL("../app/ProjectThumbnail.tsx", import.meta.url), "utf8"),
+-    readFile(new URL("../lib/github-public.ts", import.meta.url), "utf8"),
+-    readFile(new URL("../app/api/projects/route.ts", import.meta.url), "utf8"),
+-    readFile(new URL("../app/api/projects/[id]/route.ts", import.meta.url), "utf8"),
+-  ]);
+-  assert.match(dashboard, /Choose what to share/);
+-  assert.match(dashboard, /Share ↗/);
+-  assert.match(dashboard, /Add something else/);
+-  assert.match(dashboard, /PreviewStatusRefresh/);
+-  assert.match(dashboard, /Preview: capturing/);
+-  assert.match(dashboard, /Retry preview/);
+-  assert.match(dashboard, /Submit to Explore/);
+-  assert.match(updateRoute, /submit_gallery/);
+-  assert.match(updateRoute, /submitOwnedProjectToGallery/);
+-  assert.doesNotMatch(dashboard, />Capture preview</);
+-  assert.match(createRoute, /waitUntil\(captureProjectThumbnail/);
+-  assert.doesNotMatch(createRoute, /await captureProjectThumbnail/);
+-  assert.match(updateRoute, /existing\.live_url !== input\.liveUrl/);
+-  assert.match(updateRoute, /existing\.thumbnail_status !== "ready"/);
+-  assert.match(updateRoute, /queueThumbnail/);
+-  assert.doesNotMatch(thumbnail, /iframe|liveFallback/);
+-  assert.match(github, /api\.github\.com\/users/);
+-  assert.match(github, /type.*owner/);
+-  assert.doesNotMatch(github, /GITHUB_CLIENT_SECRET|\/user\/repos|scope|private/i);
+-});
+-
+-test("schema and hosting contract include D1, R2, moderation, and thumbnail states", async () => {
+-  const [schema, hosting, oauth] = await Promise.all([
+-    readFile(new URL("../db/schema.ts", import.meta.url), "utf8"),
+-    readFile(new URL("../.openai/hosting.json", import.meta.url), "utf8"),
+-    readFile(new URL("../app/api/auth/github/start/route.ts", import.meta.url), "utf8"),
+-  ]);
+-  assert.match(hosting, /"d1": "DB"/);
+-  assert.match(hosting, /"r2": "THUMBNAILS"/);
+-  for (const state of ["visible", "hidden", "draft", "submitted", "approved", "declined", "unavailable", "pending", "ready", "failed"]) assert.match(schema, new RegExp(state));
+-  assert.match(oauth, /No scope parameter/);
+-  assert.doesNotMatch(oauth, /searchParams\.set\("scope"|read:org|repo:status/);
+-});
+-
+-test("captured project previews preserve the full app frame", async () => {
+-  const styles = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
+-  assert.match(styles, /\.project-thumbnail\{[^}]*object-fit:contain[^}]*object-position:center top/);
+-  assert.doesNotMatch(styles, /\.project-thumbnail\{[^}]*object-fit:cover/);
+-});
+-
+-test("the demo has self-contained navigation and no gallery login promotion", async () => {
+-  const [nav, gallery, demoArchive, demoAbout] = await Promise.all([
+-    readFile(new URL("../app/SiteNav.tsx", import.meta.url), "utf8"),
+-    readFile(new URL("../app/PublicGallery.tsx", import.meta.url), "utf8"),
+-    readFile(new URL("../app/demo/archive/page.tsx", import.meta.url), "utf8"),
+-    readFile(new URL("../app/demo/about/page.tsx", import.meta.url), "utf8"),
+-  ]);
+-  assert.match(nav, /demo \? "\/demo\/archive" : "\/archive"/);
+-  assert.match(nav, /demo \? "\/demo\/about" : "\/about"/);
+-  assert.doesNotMatch(gallery, /collection-empty|Log in/);
+-  assert.match(demoArchive, /\/demo\/maker\//);
+-  assert.match(demoAbout, /DEMO \/ ABOUT SUNDAYS/);
+-});
+-
+-test("demo profile thumbnails contain their app preview", async () => {
+-  const styles = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
+-  assert.match(styles, /\.profile-thumb\{[^}]*display:block[^}]*overflow:hidden[^}]*position:relative/);
+-  assert.match(styles, /\.profile-thumb \.app-screen\{[^}]*width:100%[^}]*height:calc\(100% - 26px\)/);
+-});
+-
+-test("demo profiles support multiple projects with distinct project routes", async () => {
+-  const fixture = await readFile(new URL("../app/fixtures/demoGallery.ts", import.meta.url), "utf8");
+-  const makerPage = await readFile(new URL("../app/demo/maker/[handle]/page.tsx", import.meta.url), "utf8");
+-  assert.match(fixture, /makerIndexByProject/);
+-  assert.match(fixture, /projectSlug/);
+-  assert.match(makerPage, /galleryProjects\.filter/);
+-  assert.match(makerPage, /projects\.map/);
+-  assert.match(makerPage, /demo-profile-projects/);
+-});
+-
+-test("all image thumbnails use one frameless contain model", async () => {
+-  const styles = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
+-  assert.match(styles, /\.creator-image-frame\{[^}]*border:0!important/);
+-  assert.match(styles, /\.creator-image-frame\{[^}]*place-items:center[^}]*padding:clamp\(8px,1vw,14px\)!important/);
+-  assert.match(styles, /\.creator-preview\{[^}]*object-fit:contain/);
+-  assert.match(styles, /\.profile-projects \.profile-thumb\.creator-image-frame img\{[^}]*object-fit:contain[^}]*transform:none/);
+-  assert.match(styles, /\.profile-projects \.profile-thumb\.creator-image-frame::after\{content:none/);
+-});
+-
+-test("demo thumbnails render full bleed without a generated frame", async () => {
+-  const [fixture, styles] = await Promise.all([
+-    readFile(new URL("../app/fixtures/demoGallery.ts", import.meta.url), "utf8"),
+-    readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
+-  ]);
+-  assert.doesNotMatch(fixture, /\/explore-thumbs\/normalized\//);
+-  assert.match(styles, /\.creator-image-frame\.demo-frameless-frame\{padding:0!important;background:transparent!important/);
+-});
+--- /dev/null
++++ b/tests/repository.test.mjs
+@@ -0,0 +1,45 @@
++import { registerHooks } from 'node:module';
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import { resetDatabase } from './d1-fixture.mjs';
++registerHooks({resolve(specifier,context,next){if(specifier==='cloudflare:workers')return {url:new URL('./d1-fixture.mjs',import.meta.url).href,shortCircuit:true};return next(specifier,context);}});
++const repo=await import('../db/repository.ts');
++const input={title:'Notes',description:'A personal notebook.',liveUrl:'https://example.org/',repositoryUrl:null,verificationStatus:'unverified'};
++async function setup(){const sql=resetDatabase();const creator=await repo.upsertCreator({githubId:'1',githubHandle:'maker',displayName:'Maker',avatarUrl:'https://example.org/avatar',profileUrl:'https://github.com/maker'});return {sql,creator};}
++test('profile visibility, review, hiding, and moderation remain distinct',async()=>{
++ const {creator}=await setup();const p=await repo.createProject({creatorId:creator.id,...input});
++ assert.equal(p.last_check_status,'unchecked');assert.equal(p.last_checked_at,null);
++ assert.equal((await repo.listApprovedProjects()).length,0);assert.equal((await repo.listVisibleProjectsForCreator(creator.id)).length,1);
++ await repo.moderateProject(p.id,'approve',null);assert.equal((await repo.listApprovedProjects()).length,1);
++ assert.equal(await repo.getOwnedProject(p.id,'someone-else'),null);
++ assert.equal(await repo.updateOwnedProject(p.id,'someone-else',input),false);
++ await repo.withdrawOwnedProject(p.id,creator.id);
++ assert.equal((await repo.listApprovedProjects()).length,0);assert.equal((await repo.listVisibleProjectsForCreator(creator.id)).length,0);
++ await repo.moderateProject(p.id,'approve',null);assert.equal((await repo.listApprovedProjects()).length,0);
++ await repo.showOwnedProjectOnProfile(p.id,creator.id);assert.equal((await repo.listVisibleProjectsForCreator(creator.id)).length,1);
++ assert.equal(await repo.submitOwnedProjectToGallery(p.id,creator.id),true);
++ await repo.moderateProject(p.id,'unavailable','Unsafe site');assert.equal((await repo.listVisibleProjectsForCreator(creator.id)).length,0);
++});
++test('old capture jobs cannot replace the preview of an edited URL',async()=>{
++ const {creator}=await setup();const p=await repo.createProject({creatorId:creator.id,...input});
++ await repo.updateOwnedProject(p.id,creator.id,{...input,liveUrl:'https://example.com/'});
++ assert.equal(await repo.setThumbnailState(p.id,'ready','projects/old/image.png',null,p.live_url,p.updated_at),false);
++ const newer=await repo.getProjectById(p.id);
++ assert.equal(await repo.setThumbnailState(p.id,'ready','projects/new/image.png',null,newer.live_url,newer.updated_at),true);
++ await repo.queueThumbnail(p.id);assert.equal((await repo.getProjectById(p.id)).thumbnail_storage_key,'projects/new/image.png');
++ await repo.queueThumbnail(p.id,true);assert.equal((await repo.getProjectById(p.id)).thumbnail_storage_key,null);
++});
++test('OAuth state is single use and sessions expire server-side',async()=>{
++ const {creator,sql}=await setup();await repo.createOAuthState('state','/submit');
++ assert.equal(await repo.consumeOAuthState('state'),'/submit');assert.equal(await repo.consumeOAuthState('state'),null);
++ await repo.createSession('session',creator.id);assert.equal((await repo.getCreatorForSession('session')).id,creator.id);
++ sql.prepare("UPDATE sessions SET expires_at='2000-01-01'").run();assert.equal(await repo.getCreatorForSession('session'),null);
++});
++test('three real failures withdraw a project; successful checks only restore automatic withdrawals',async()=>{
++ const {creator}=await setup();const p=await repo.createProject({creatorId:creator.id,...input});await repo.moderateProject(p.id,'approve',null);
++ await repo.setProjectLinkHealth(p.id,false);await repo.setProjectLinkHealth(p.id,false);assert.equal((await repo.listApprovedProjects()).length,1);
++ await repo.setProjectLinkHealth(p.id,false);assert.equal((await repo.listApprovedProjects()).length,0);
++ await repo.setProjectLinkHealth(p.id,true);assert.equal((await repo.listApprovedProjects()).length,1);
++ await repo.moderateProject(p.id,'unavailable','Manual moderation');await repo.setProjectLinkHealth(p.id,true);assert.equal((await repo.listApprovedProjects()).length,0);
++});
++test('report allowance limits repeated reports',async()=>{await setup();for(let i=0;i<5;i++)assert.equal(await repo.consumeReportAllowance('visitor'),true);assert.equal(await repo.consumeReportAllowance('visitor'),false);});
+--- /dev/null
++++ b/tests/security.test.mjs
+@@ -0,0 +1,55 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import { validatePublicUrl, isPrivateIp, probePublicUrl } from '../lib/url-safety.ts';
++import { isSameOriginMutation, mutationGuard } from '../lib/request-security.ts';
++import { readProjectFields, verifyProjectFields } from '../lib/project-input.ts';
++import { readCaptureImage } from '../lib/image-response.ts';
++
++test('public URLs reject private, obfuscated, credential, and reserved destinations',()=>{
++ for(const url of ['http://localhost','http://127.1','http://2130706433','http://0x7f000001','http://10.1.2.3','http://100.64.0.1','http://169.254.169.254','http://192.168.1.1','http://172.16.2.2','http://198.18.0.1','http://[::ffff:127.0.0.1]','http://[::ffff:a00:1]','https://internal.local','https://me:secret@example.org','file:///etc/passwd','javascript:alert(1)','https://example.org:9000']) assert.throws(()=>validatePublicUrl(url),url);
++ assert.equal(validatePublicUrl('https://github.com/openai/codex#readme').toString(),'https://github.com/openai/codex');
++ assert.equal(isPrivateIp('::ffff:c0a8:101'),true);
++});
++test('every origin-dependent write rejects missing, opaque and cross-site origins',()=>{
++ const req=(headers)=>new Request('https://sundays.example/api/projects',{method:'POST',headers});
++ assert.equal(isSameOriginMutation(req({origin:'https://sundays.example'})),true);
++ for(const headers of [{},{origin:'null'},{origin:'https://evil.example'},{origin:'https://sundays.example','sec-fetch-site':'cross-site'}]) assert.equal(mutationGuard(req(headers)).status,403);
++ assert.equal(mutationGuard(req({origin:'https://sundays.example','content-length':'20000'})).status,413);
++});
++const form=(fields={})=>{const f=new FormData();for(const [k,v]of Object.entries({title:'Quiet Notes',description:'A small notebook for evening ideas.',live_url:'https://example.org',...fields}))f.set(k,v);return f;};
++test('project validation retains normal URLs but rejects malformed fields and repo links',()=>{
++ assert.equal(readProjectFields(form()).liveUrl,'https://example.org/');
++ for(const fields of [{title:' '},{description:'short'},{live_url:'http://127.0.0.1'},{repository_url:'https://github.com/user/repo/issues'}]) assert.throws(()=>readProjectFields(form(fields)),{name:'InputError'});
++});
++test('a typed repository owner cannot claim verification without a public repository response',async(t)=>{
++ t.mock.method(globalThis,'fetch',async()=>new Response('{}',{status:404}));
++ assert.equal((await verifyProjectFields(form({repository_url:'https://github.com/maker/not-real'}),'maker')).verificationStatus,'unverified');
++ globalThis.fetch=async()=>Response.json({private:false,owner:{login:'Maker'}});
++ assert.equal((await verifyProjectFields(form({repository_url:'https://github.com/maker/real'}),'maker')).verificationStatus,'verified');
++ globalThis.fetch=async()=>{throw new Error('rate limited');};
++ assert.equal((await verifyProjectFields(form({repository_url:'https://github.com/maker/real'}),'maker')).verificationStatus,'unverified');
++});
++test('DNS and redirect checks reject unsafe destinations before requesting them',async(t)=>{
++ const calls=[];
++ t.mock.method(globalThis,'fetch',async(url)=>{calls.push(String(url));return Response.json({Answer:[{type:1,data:'10.0.0.1'}]});});
++ await assert.rejects(probePublicUrl('https://example.org'),/private/);
++ assert.equal(calls.some(url=>url==='https://example.org/'),false);
++ globalThis.fetch=async(url)=>String(url).includes('dns-query')?Response.json({Answer:[{type:1,data:'93.184.216.34'}]}):new Response(null,{status:302,headers:{location:'http://127.0.0.1/admin'}});
++ await assert.rejects(probePublicUrl('https://example.org'),/private/);
++});
++test('capture ingestion rejects SVG, bogus raster bodies, and unbounded chunks',async()=>{
++ await assert.rejects(readCaptureImage(new Response('<svg/>',{headers:{'content-type':'image/svg+xml'}})),/PNG/);
++ await assert.rejects(readCaptureImage(new Response('<script/>',{headers:{'content-type':'image/png'}})),/invalid/);
++ const stream=new ReadableStream({start(c){c.enqueue(new Uint8Array(5_000_001));c.close();}});
++ await assert.rejects(readCaptureImage(new Response(stream,{headers:{'content-type':'image/png'}})),/too large/);
++ const png=Uint8Array.from([137,80,78,71,13,10,26,10]);
++ assert.equal((await readCaptureImage(new Response(png,{headers:{'content-type':'image/png'}}))).bytes.length,8);
++});
++
++test('chunked form bodies cannot bypass the body limit',async()=>{
++ const { readBoundedFormData } = await import('../lib/request-security.ts');
++ const normal=new Request('https://example.org',{method:'POST',body:new URLSearchParams({title:'Kept'})});
++ assert.equal((await readBoundedFormData(normal)).get('title'),'Kept');
++ const oversized=new Request('https://example.org',{method:'POST',body:'x'.repeat(17000)});
++ await assert.rejects(readBoundedFormData(oversized),/too large/);
++});
+--- a/tsconfig.json
++++ b/tsconfig.json
+@@ -6,6 +6,7 @@
+     "skipLibCheck": true,
+     "strict": true,
+     "noEmit": true,
++    "allowImportingTsExtensions": true,
+     "esModuleInterop": true,
+     "module": "esnext",
+     "moduleResolution": "bundler",
+--- a/worker/index.ts
++++ b/worker/index.ts
+@@ -40,7 +40,16 @@
+       }, allowedWidths);
+     }
+ 
+-    return handler.fetch(request, env, ctx);
++    const response = await handler.fetch(request, env, ctx);
++    const headers = new Headers(response.headers);
++    headers.set("X-Content-Type-Options", "nosniff");
++    headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
++    headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
++    headers.set("Content-Security-Policy", "object-src 'none'; base-uri 'self'; form-action 'self'");
++    if (url.pathname.startsWith("/api/") || ["/dashboard", "/submit", "/join", "/admin"].includes(url.pathname) || request.headers.has("cookie")) {
++      headers.set("Cache-Control", "private, no-store");
++    }
++    return new Response(response.body, { status:response.status, statusText:response.statusText, headers });
+   },
+ };
+ 
+--- /dev/null
++++ b/wrangler.local.jsonc
+@@ -0,0 +1,8 @@
++{
++  "name": "sundays-local",
++  "main": "worker/index.ts",
++  "compatibility_date": "2026-07-01",
++  "compatibility_flags": ["nodejs_compat"],
++  "d1_databases": [{"binding":"DB","database_name":"site-creator-d1","database_id":"00000000-0000-4000-8000-000000000000","migrations_dir":"drizzle"}],
++  "r2_buckets": [{"binding":"THUMBNAILS","bucket_name":"site-creator-r2"}]
++}

@@ -1,3 +1,4 @@
+import { mutationGuard, readBoundedFormData } from "../../../../../lib/request-security";
 import { NextRequest, NextResponse } from "next/server";
 import { consumeReportAllowance, createReport, getProjectById } from "../../../../../db/repository";
 
@@ -13,6 +14,8 @@ async function reportFingerprint(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const rejected = mutationGuard(request);
+  if (rejected) return rejected;
   const origin = request.headers.get("origin");
   if (origin && origin !== request.nextUrl.origin) return new NextResponse("Forbidden", { status: 403 });
   const { id } = await params;
@@ -21,7 +24,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   if (!await consumeReportAllowance(await reportFingerprint(request))) {
     return NextResponse.redirect(new URL(`/project/${project.slug}?report_limit=1`, request.url), 303);
   }
-  const form = await request.formData();
+  const form = await readBoundedFormData(request);
   const requestedReason = String(form.get("reason") ?? "broken_link").slice(0, 40);
   const reason = reasons.has(requestedReason) ? requestedReason : "other";
   const details = String(form.get("details") ?? "").trim().slice(0, 500) || null;

@@ -6,7 +6,7 @@ export default function DemoExplorePage() {
   return (
     <main>
       <SiteNav active="explore" demo />
-      <section className="projects route-page shell">
+      <section id="content" tabIndex={-1} className="projects route-page shell">
         <div className="section-head">
           <div>
             <span className="section-number">DEMO / EXPLORE</span>

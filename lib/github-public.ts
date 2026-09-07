@@ -51,6 +51,7 @@ export async function listPublicGitHubRepositories(handle: string): Promise<Publ
   endpoint.searchParams.set("per_page", "100");
   const response = await fetch(endpoint, {
     cache: "no-store",
+    signal: AbortSignal.timeout(6_000),
     headers: {
       Accept: "application/vnd.github+json",
       "X-GitHub-Api-Version": "2022-11-28",

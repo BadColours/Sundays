@@ -201,19 +201,3 @@ button,input,textarea,select{font:inherit;color:inherit}button{cursor:pointer;ba
   object-position:center!important;
   transform:none!important;
 }
-.demo-edge-bleed[src$="/23.png"],
-.demo-edge-bleed[src$="/49.png"]{
-  width:104%!important;
-  height:104%!important;
-  max-width:none!important;
-  margin:-2%!important;
-  object-fit:cover!important;
-}
-.demo-frameless-frame:has(.demo-edge-bleed[src$="/08.png"]),
-.demo-app-surface.image:has(.demo-edge-bleed[src$="/08.png"]),
-.archive-thumb:has(.demo-edge-bleed[src$="/08.png"]){
-  background:#f4e2b7!important;
-}
-.demo-edge-bleed[src$="/08.png"]{
-  transform:translateY(1.75%)!important;
-}

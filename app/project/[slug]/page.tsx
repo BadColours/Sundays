@@ -1,5 +1,5 @@
+import { CreatorAvatar } from "../../CreatorAvatar";
 import type { Metadata } from "next";
-import { headers } from "next/headers";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getApprovedProjectBySlug } from "../../../db/repository";
@@ -14,11 +14,8 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   let project;
   try { project = await getApprovedProjectBySlug(slug); } catch { project = null; }
   if (!project) return { title: "Project not found — sundays" };
-  const requestHeaders = await headers();
-  const host = requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host") ?? "localhost:3000";
-  const protocol = requestHeaders.get("x-forwarded-proto") ?? (host.includes("localhost") ? "http" : "https");
   const imagePath = project.thumbnail_status === "ready" ? thumbnailUrl(project.thumbnail_storage_key) : null;
-  const image = imagePath ? `${protocol}://${host}${imagePath}` : undefined;
+  const image = imagePath ? `https://offhours-gallery.badcolours.chatgpt.site${imagePath}` : undefined;
   return {
     title: `${project.title} — sundays`,
     description: project.short_description,
@@ -29,29 +26,28 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 
 export default async function ProjectPage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<{ reported?: string; report_limit?: string }> }) {
   const { slug } = await params;
-  let project;
-  try { project = await getApprovedProjectBySlug(slug); } catch { project = null; }
+  const project = await getApprovedProjectBySlug(slug);
   if (!project) notFound();
   const { reported, report_limit: reportLimit } = await searchParams;
   return (
     <main>
       <SiteNav />
-      <article className="project-detail shell">
+      <article id="content" tabIndex={-1} className="project-detail shell">
         <div className="project-detail-index">PROJECT / {project.slug.toUpperCase()}</div>
         <a className="project-detail-image" href={project.live_url} target="_blank" rel="noopener noreferrer"><ProjectThumbnail project={project} /></a>
         <div className="project-detail-copy">
           <h1>{project.title}</h1>
           <p>{project.short_description}</p>
           <div className="project-creator-line">
-            <img src={project.avatar_url} alt="" />
+            <CreatorAvatar src={project.avatar_url} name={project.display_name ?? "Creator"} />
             <span><Link href={`/maker/${project.github_handle}`}>{project.display_name}</Link></span>
-            {project.verification_status === "verified" && <span className="verification-mark">Verified maker</span>}
+            {project.verification_status === "verified" && <span className="verification-mark" title="The repository belongs to this GitHub account; the live site is not verified.">Repository matched</span>}
           </div>
           {project.repository_url && <a className="project-repository-link" href={project.repository_url} target="_blank" rel="noopener noreferrer">GitHub repository ↗</a>}
           <a className="mvp-button primary" href={project.live_url} target="_blank" rel="noopener noreferrer">Launch project ↗</a>
           <small>Published {project.published_at ? new Date(project.published_at).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }) : "on Sundays"}</small>
         </div>
-        <details className="report-control">
+        <details className="report-control" open={Boolean(reported || reportLimit)}>
           <summary>Report a problem</summary>
           {reported ? <p>Thanks. The report is queued for review; the project remains available until it is checked.</p> : reportLimit ? <p>Too many reports were sent from this browser. Please try again later.</p> : (
             <form action={`/api/projects/${project.id}/report`} method="post">

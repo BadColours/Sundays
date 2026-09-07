@@ -8,7 +8,7 @@ export async function GET(request: NextRequest) {
   const runtime = bindings();
   const returnTo = safeReturnTo(request.nextUrl.searchParams.get("return_to"));
   if (!runtime.GITHUB_CLIENT_ID || !runtime.GITHUB_CLIENT_SECRET) {
-    return NextResponse.redirect(new URL("/submit?error=github_not_configured", request.url));
+    return NextResponse.redirect(new URL("/join?error=github_not_configured", request.url));
   }
   const state = randomToken();
   await createOAuthState(await sha256(state), returnTo);

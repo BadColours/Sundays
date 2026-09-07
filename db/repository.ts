@@ -80,135 +80,41 @@ export function database(): D1Database {
   return databaseBinding;
 }
 
-const schemaStatements = [
-  `CREATE TABLE IF NOT EXISTS creators (
-    id TEXT PRIMARY KEY NOT NULL,
-    github_id TEXT NOT NULL,
-    github_handle TEXT NOT NULL,
-    display_name TEXT NOT NULL,
-    avatar_url TEXT NOT NULL,
-    github_profile_url TEXT NOT NULL,
-    created_at TEXT NOT NULL,
-    updated_at TEXT NOT NULL
-  )`,
-  `CREATE UNIQUE INDEX IF NOT EXISTS creators_github_id_idx ON creators (github_id)`,
-  `CREATE UNIQUE INDEX IF NOT EXISTS creators_github_handle_idx ON creators (github_handle)`,
-  `CREATE TABLE IF NOT EXISTS projects (
-    id TEXT PRIMARY KEY NOT NULL,
-    creator_id TEXT NOT NULL REFERENCES creators(id) ON DELETE CASCADE,
-    slug TEXT NOT NULL,
-    title TEXT NOT NULL,
-    short_description TEXT NOT NULL,
-    live_url TEXT NOT NULL,
-    repository_url TEXT,
-    verification_status TEXT NOT NULL DEFAULT 'unverified',
-    profile_status TEXT NOT NULL DEFAULT 'visible',
-    moderation_status TEXT NOT NULL DEFAULT 'submitted',
-    thumbnail_status TEXT NOT NULL DEFAULT 'pending',
-    thumbnail_storage_key TEXT,
-    thumbnail_error TEXT,
-    moderation_note TEXT,
-    last_checked_at TEXT,
-    last_check_status TEXT NOT NULL DEFAULT 'unchecked',
-    consecutive_check_failures INTEGER NOT NULL DEFAULT 0,
-    created_at TEXT NOT NULL,
-    updated_at TEXT NOT NULL,
-    published_at TEXT
-  )`,
-  `CREATE UNIQUE INDEX IF NOT EXISTS projects_slug_idx ON projects (slug)`,
-  `CREATE INDEX IF NOT EXISTS projects_creator_idx ON projects (creator_id)`,
-  `CREATE INDEX IF NOT EXISTS projects_creator_profile_idx ON projects (creator_id, profile_status)`,
-  `CREATE INDEX IF NOT EXISTS projects_status_published_idx ON projects (moderation_status, published_at)`,
-  `CREATE TABLE IF NOT EXISTS sessions (
-    token_hash TEXT PRIMARY KEY NOT NULL,
-    creator_id TEXT NOT NULL REFERENCES creators(id) ON DELETE CASCADE,
-    created_at TEXT NOT NULL,
-    expires_at TEXT NOT NULL
-  )`,
-  `CREATE INDEX IF NOT EXISTS sessions_creator_idx ON sessions (creator_id)`,
-  `CREATE TABLE IF NOT EXISTS oauth_states (
-    state_hash TEXT PRIMARY KEY NOT NULL,
-    return_to TEXT NOT NULL,
-    created_at TEXT NOT NULL,
-    expires_at TEXT NOT NULL
-  )`,
-  `CREATE TABLE IF NOT EXISTS project_reports (
-    id TEXT PRIMARY KEY NOT NULL,
-    project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
-    reason TEXT NOT NULL,
-    details TEXT,
-    status TEXT NOT NULL DEFAULT 'open',
-    created_at TEXT NOT NULL
-  )`,
-  `CREATE INDEX IF NOT EXISTS project_reports_project_idx ON project_reports (project_id, status)`,
-  `CREATE TABLE IF NOT EXISTS report_rate_limits (
-    fingerprint TEXT PRIMARY KEY NOT NULL,
-    window_start TEXT NOT NULL,
-    count INTEGER NOT NULL DEFAULT 0
-  )`,
-];
-
-const projectUpgradeStatements = [
-  "ALTER TABLE projects ADD COLUMN repository_url TEXT",
-  "ALTER TABLE projects ADD COLUMN verification_status TEXT NOT NULL DEFAULT 'unverified'",
-  "ALTER TABLE projects ADD COLUMN profile_status TEXT NOT NULL DEFAULT 'visible'",
-  "ALTER TABLE projects ADD COLUMN last_checked_at TEXT",
-  "ALTER TABLE projects ADD COLUMN last_check_status TEXT NOT NULL DEFAULT 'unchecked'",
-  "ALTER TABLE projects ADD COLUMN consecutive_check_failures INTEGER NOT NULL DEFAULT 0",
-];
-
-let initialized = false;
-export async function ensureSchema() {
-  if (initialized) return;
-  const db = database();
-  await db.batch(schemaStatements.map((sql) => db.prepare(sql)));
-  for (const sql of projectUpgradeStatements) {
-    try { await db.prepare(sql).run(); } catch { /* Column already exists. */ }
-  }
-  initialized = true;
-}
-
 function joinedProjectSelect() {
   return `SELECT projects.*, creators.github_handle, creators.display_name, creators.avatar_url, creators.github_profile_url
     FROM projects JOIN creators ON creators.id = projects.creator_id`;
 }
 
 export async function listApprovedProjects(limit = 60): Promise<Project[]> {
-  await ensureSchema();
   const result = await database().prepare(`${joinedProjectSelect()}
-    WHERE projects.moderation_status = 'approved'
+    WHERE projects.moderation_status = 'approved' AND projects.profile_status = 'visible' AND projects.moderation_status != 'unavailable'
     ORDER BY projects.published_at DESC LIMIT ?`).bind(limit).all<Project>();
   return result.results;
 }
 
 export async function getApprovedProjectBySlug(slug: string): Promise<Project | null> {
-  await ensureSchema();
   return await database().prepare(`${joinedProjectSelect()}
-    WHERE projects.slug = ? AND projects.moderation_status = 'approved' LIMIT 1`).bind(slug).first<Project>();
+    WHERE projects.slug = ? AND projects.moderation_status = 'approved' AND projects.profile_status = 'visible' LIMIT 1`).bind(slug).first<Project>();
 }
 
 export async function getCreatorByHandle(handle: string): Promise<Creator | null> {
-  await ensureSchema();
   return await database().prepare("SELECT * FROM creators WHERE lower(github_handle) = lower(?) LIMIT 1").bind(handle).first<Creator>();
 }
 
 export async function listVisibleProjectsForCreator(creatorId: string): Promise<Project[]> {
-  await ensureSchema();
   const result = await database().prepare(`${joinedProjectSelect()}
-    WHERE projects.creator_id = ? AND projects.profile_status = 'visible'
+    WHERE projects.creator_id = ? AND projects.profile_status = 'visible' AND projects.moderation_status != 'unavailable'
     ORDER BY projects.created_at DESC`).bind(creatorId).all<Project>();
   return result.results;
 }
 
 export async function getCreatorForSession(tokenHash: string): Promise<Creator | null> {
-  await ensureSchema();
   return await database().prepare(`SELECT creators.* FROM sessions
     JOIN creators ON creators.id = sessions.creator_id
     WHERE sessions.token_hash = ? AND sessions.expires_at > ? LIMIT 1`).bind(tokenHash, new Date().toISOString()).first<Creator>();
 }
 
 export async function createOAuthState(stateHash: string, returnTo: string) {
-  await ensureSchema();
   const now = new Date();
   const expires = new Date(now.getTime() + 10 * 60 * 1000);
   await database().prepare("INSERT INTO oauth_states (state_hash, return_to, created_at, expires_at) VALUES (?, ?, ?, ?)")
@@ -216,11 +122,9 @@ export async function createOAuthState(stateHash: string, returnTo: string) {
 }
 
 export async function consumeOAuthState(stateHash: string): Promise<string | null> {
-  await ensureSchema();
   const db = database();
-  const state = await db.prepare("SELECT return_to FROM oauth_states WHERE state_hash = ? AND expires_at > ? LIMIT 1")
+  const state = await db.prepare("DELETE FROM oauth_states WHERE state_hash = ? AND expires_at > ? RETURNING return_to")
     .bind(stateHash, new Date().toISOString()).first<{ return_to: string }>();
-  await db.prepare("DELETE FROM oauth_states WHERE state_hash = ?").bind(stateHash).run();
   return state?.return_to ?? null;
 }
 
@@ -231,7 +135,6 @@ export async function upsertCreator(profile: {
   avatarUrl: string;
   profileUrl: string;
 }): Promise<Creator> {
-  await ensureSchema();
   const db = database();
   const existing = await db.prepare("SELECT id FROM creators WHERE github_id = ? LIMIT 1").bind(profile.githubId).first<{ id: string }>();
   const id = existing?.id ?? crypto.randomUUID();
@@ -247,7 +150,6 @@ export async function upsertCreator(profile: {
 }
 
 export async function createSession(tokenHash: string, creatorId: string) {
-  await ensureSchema();
   const now = new Date();
   const expires = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
   await database().prepare("INSERT INTO sessions (token_hash, creator_id, created_at, expires_at) VALUES (?, ?, ?, ?)")
@@ -255,7 +157,6 @@ export async function createSession(tokenHash: string, creatorId: string) {
 }
 
 export async function deleteSession(tokenHash: string) {
-  await ensureSchema();
   await database().prepare("DELETE FROM sessions WHERE token_hash = ?").bind(tokenHash).run();
 }
 
@@ -276,59 +177,51 @@ async function uniqueSlug(title: string) {
 }
 
 export async function createProject(input: { creatorId: string; title: string; description: string; liveUrl: string; repositoryUrl: string | null; verificationStatus: VerificationStatus }): Promise<Project> {
-  await ensureSchema();
   const id = crypto.randomUUID();
   const slug = await uniqueSlug(input.title);
   const now = new Date().toISOString();
   await database().prepare(`INSERT INTO projects
     (id, creator_id, slug, title, short_description, live_url, repository_url, verification_status, profile_status, moderation_status, thumbnail_status, last_checked_at, last_check_status, consecutive_check_failures, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'visible', 'submitted', 'pending', ?, 'healthy', 0, ?, ?)`)
-    .bind(id, input.creatorId, slug, input.title, input.description, input.liveUrl, input.repositoryUrl, input.verificationStatus, now, now, now).run();
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'visible', 'submitted', 'pending', NULL, 'unchecked', 0, ?, ?)`)
+    .bind(id, input.creatorId, slug, input.title, input.description, input.liveUrl, input.repositoryUrl, input.verificationStatus, now, now).run();
   return (await getProjectById(id))!;
 }
 
 export async function getProjectById(id: string): Promise<Project | null> {
-  await ensureSchema();
   return await database().prepare(`${joinedProjectSelect()} WHERE projects.id = ? LIMIT 1`).bind(id).first<Project>();
 }
 
 export async function getOwnedProject(id: string, creatorId: string): Promise<Project | null> {
-  await ensureSchema();
   return await database().prepare(`${joinedProjectSelect()} WHERE projects.id = ? AND projects.creator_id = ? LIMIT 1`).bind(id, creatorId).first<Project>();
 }
 
 export async function listProjectsForOwner(creatorId: string): Promise<Project[]> {
-  await ensureSchema();
   const result = await database().prepare(`${joinedProjectSelect()} WHERE projects.creator_id = ? ORDER BY projects.created_at DESC`)
     .bind(creatorId).all<Project>();
   return result.results;
 }
 
 export async function updateOwnedProject(id: string, creatorId: string, input: { title: string; description: string; liveUrl: string; repositoryUrl: string | null; verificationStatus: VerificationStatus }) {
-  await ensureSchema();
   const project = await getOwnedProject(id, creatorId);
   if (!project) return false;
   const nextStatus: ModerationStatus = project.moderation_status === "approved" ? "submitted" : project.moderation_status === "unavailable" ? "submitted" : project.moderation_status;
   const now = new Date().toISOString();
-  await database().prepare(`UPDATE projects SET title = ?, short_description = ?, live_url = ?, repository_url = ?, verification_status = ?, moderation_status = ?, moderation_note = NULL, last_checked_at = ?, last_check_status = 'healthy', consecutive_check_failures = 0, updated_at = ? WHERE id = ? AND creator_id = ?`)
-    .bind(input.title, input.description, input.liveUrl, input.repositoryUrl, input.verificationStatus, nextStatus, now, now, id, creatorId).run();
+  await database().prepare(`UPDATE projects SET title = ?, short_description = ?, live_url = ?, repository_url = ?, verification_status = ?, moderation_status = ?, moderation_note = NULL, last_checked_at = NULL, last_check_status = 'unchecked', consecutive_check_failures = 0, updated_at = ? WHERE id = ? AND creator_id = ?`)
+    .bind(input.title, input.description, input.liveUrl, input.repositoryUrl, input.verificationStatus, nextStatus, now, id, creatorId).run();
   return true;
 }
 
 export async function withdrawOwnedProject(id: string, creatorId: string) {
-  await ensureSchema();
   await database().prepare("UPDATE projects SET profile_status = 'hidden', moderation_status = 'draft', published_at = NULL, updated_at = ? WHERE id = ? AND creator_id = ?")
     .bind(new Date().toISOString(), id, creatorId).run();
 }
 
 export async function showOwnedProjectOnProfile(id: string, creatorId: string) {
-  await ensureSchema();
   await database().prepare("UPDATE projects SET profile_status = 'visible', updated_at = ? WHERE id = ? AND creator_id = ?")
     .bind(new Date().toISOString(), id, creatorId).run();
 }
 
 export async function submitOwnedProjectToGallery(id: string, creatorId: string) {
-  await ensureSchema();
   const project = await getOwnedProject(id, creatorId);
   if (!project || project.profile_status !== "visible" || !["draft", "declined"].includes(project.moderation_status)) return false;
   await database().prepare("UPDATE projects SET moderation_status = 'submitted', moderation_note = NULL, updated_at = ? WHERE id = ? AND creator_id = ?")
@@ -336,18 +229,18 @@ export async function submitOwnedProjectToGallery(id: string, creatorId: string)
   return true;
 }
 
-export async function setThumbnailState(id: string, status: ThumbnailStatus, key: string | null, error: string | null) {
-  await ensureSchema();
-  await database().prepare("UPDATE projects SET thumbnail_status = ?, thumbnail_storage_key = ?, thumbnail_error = ?, updated_at = ? WHERE id = ?")
-    .bind(status, key, error, new Date().toISOString(), id).run();
+export async function setThumbnailState(id: string, status: ThumbnailStatus, key: string | null, error: string | null, expectedUrl: string, expectedVersion: string) {
+  const result = await database().prepare("UPDATE projects SET thumbnail_status = ?, thumbnail_storage_key = COALESCE(?, thumbnail_storage_key), thumbnail_error = ? WHERE id = ? AND live_url = ? AND updated_at = ?")
+    .bind(status, key, error, id, expectedUrl, expectedVersion).run();
+  return result.meta.changes > 0;
 }
 
-export async function queueThumbnail(id: string) {
-  await setThumbnailState(id, "pending", null, null);
+export async function queueThumbnail(id: string, clear = false) {
+  await database().prepare("UPDATE projects SET thumbnail_status = 'pending', thumbnail_storage_key = CASE WHEN ? THEN NULL ELSE thumbnail_storage_key END, thumbnail_error = NULL, updated_at = ? WHERE id = ?")
+    .bind(clear ? 1 : 0, new Date().toISOString(), id).run();
 }
 
 export async function listProjectsForModeration(): Promise<Project[]> {
-  await ensureSchema();
   const result = await database().prepare(`${joinedProjectSelect()}
     WHERE projects.moderation_status IN ('submitted', 'approved', 'declined', 'unavailable')
     ORDER BY CASE projects.moderation_status WHEN 'submitted' THEN 0 ELSE 1 END, projects.updated_at DESC`).all<Project>();
@@ -355,7 +248,6 @@ export async function listProjectsForModeration(): Promise<Project[]> {
 }
 
 export async function listProjectsForHealthCheck(limit = 12): Promise<Project[]> {
-  await ensureSchema();
   const result = await database().prepare(`${joinedProjectSelect()}
     WHERE projects.moderation_status = 'approved'
       OR (projects.moderation_status = 'unavailable' AND projects.moderation_note LIKE 'Automatic link check:%')
@@ -365,22 +257,19 @@ export async function listProjectsForHealthCheck(limit = 12): Promise<Project[]>
 }
 
 export async function moderateProject(id: string, action: "approve" | "decline" | "unavailable" | "restore", note: string | null) {
-  await ensureSchema();
   const now = new Date().toISOString();
   const status: ModerationStatus = action === "approve" || action === "restore" ? "approved" : action === "decline" ? "declined" : "unavailable";
   const published = status === "approved" ? now : null;
-  await database().prepare(`UPDATE projects SET moderation_status = ?, moderation_note = ?, published_at = CASE WHEN ? = 'approved' THEN COALESCE(published_at, ?) ELSE NULL END, updated_at = ? WHERE id = ?`)
+  await database().prepare(`UPDATE projects SET moderation_status = ?, moderation_note = ?, published_at = CASE WHEN ? = 'approved' THEN COALESCE(published_at, ?) ELSE NULL END, updated_at = ? WHERE id = ? AND profile_status = 'visible'`)
     .bind(status, note, status, published, now, id).run();
 }
 
 export async function createReport(projectId: string, reason: string, details: string | null) {
-  await ensureSchema();
   await database().prepare("INSERT INTO project_reports (id, project_id, reason, details, status, created_at) VALUES (?, ?, ?, ?, 'open', ?)")
     .bind(crypto.randomUUID(), projectId, reason, details, new Date().toISOString()).run();
 }
 
 export async function consumeReportAllowance(fingerprint: string, limit = 5) {
-  await ensureSchema();
   const now = new Date().toISOString();
   const db = database();
   const cutoff = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
@@ -394,7 +283,6 @@ export async function consumeReportAllowance(fingerprint: string, limit = 5) {
 }
 
 export async function listOpenReports(): Promise<ProjectReport[]> {
-  await ensureSchema();
   const result = await database().prepare(`SELECT project_reports.*, projects.title AS project_title, projects.slug AS project_slug,
     projects.live_url AS project_live_url, creators.github_handle, creators.display_name
     FROM project_reports
@@ -406,7 +294,6 @@ export async function listOpenReports(): Promise<ProjectReport[]> {
 }
 
 export async function resolveProjectReport(reportId: string, action: "reviewed" | "dismissed" | "unavailable") {
-  await ensureSchema();
   const db = database();
   const report = await db.prepare("SELECT project_id, reason FROM project_reports WHERE id = ? AND status = 'open' LIMIT 1")
     .bind(reportId).first<{ project_id: string; reason: string }>();
@@ -422,7 +309,6 @@ export async function resolveProjectReport(reportId: string, action: "reviewed" 
 }
 
 export async function setProjectLinkHealth(id: string, healthy: boolean, message?: string) {
-  await ensureSchema();
   const db = database();
   const project = await db.prepare("SELECT consecutive_check_failures, moderation_status, moderation_note FROM projects WHERE id = ? LIMIT 1")
     .bind(id).first<{ consecutive_check_failures: number; moderation_status: ModerationStatus; moderation_note: string | null }>();
